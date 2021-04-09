@@ -1,1047 +1,598 @@
-/******************************************************************************
-    Filename: rtcOS.c
-    Description: 
-        This file contains the simple tasking system that allows
-        events and messages to be sent to tasks.  When a task 
-        is called for an event/message then it will run to completion
-        and then return to the scheduler.
+#include "rtcos.h"
 
-        The implementation has the task info in an array and the max is
-        defined at compile time.  When control returns back to the 
-        scheduler it looks through the event flags of each task
-        starting with the highest priority.  The first task it
-        finds with events or messages, it will call the task handler.
-        Pretty basic.
-    
-    Written: Jon Norenberg, 2013 - 2016
-    Copyright: My code is your code.  No warranties. 
-******************************************************************************/
-
-//******************************************************************************
-// Includes
-//******************************************************************************
-#include "rtcOS.h"
-
-//******************************************************************************
-// Constants
-//******************************************************************************
-
-//******************************************************************************
-// Typedefs
-//******************************************************************************
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-// each task has a message fifo that tracks all the messages for a task
-typedef struct _OSFIFO_t
+typedef struct
 {
-    osIndex_t       mHead;
-    osIndex_t       mTail;
-    osIndex_t       mCount;
-    osMsg_t         mBuffer[MAX_MESSAGES_IN_SYSTEM];
-} OSFIFO_t, *OSFIFOPTR_t;
-#endif
+  _U08 u08Head;
+  _U08 u08Tail;
+  _U08 u08Count;
+  void *tpvBuffer[RTCOS_MAX_MESSAGES_COUNT];
+}rtcos_fifo_t;
 
-
-// stores information about a event to send in the future
-typedef struct _FutureEventInfo_t
+typedef struct
 {
-    osEvents_t          mEventFlags;
-    volatile osTick_t   mTimeout;
-    osTick_t            mReloadTimeout;
-    osTaskID_t          mTaskID;
-    volatile _bool       mInUse;
-} FutureEventInfo_t;
+  _U32 u32EventFlags;
+  volatile _U32 u32Timeout;
+  _U32 u32ReloadTimeout;
+  _U08 u08TaskID;
+  volatile _BOOL bInUse;
+}rtcos_future_event_t;
 
-
-// keeps track of information about each task in the system
-typedef struct _TaskInfo_t
+typedef struct
 {
-    volatile osEvents_t     mEventFlags;
-    pTaskEventHandler_t     mEventHandler;
-    osTaskParam_t           mTaskParam;
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-    OSFIFO_t                mFifo;   
-#endif
-} TaskInfo_t;
+  volatile _BOOL bInUse;
+  rtcos_timer_type_t mPeriodType;
+  volatile _U32	u32StartTickCount;
+  _U32 u32TickDelay;
+  pf_timer_cb_t pfTimerCb;
+}rtcos_timer_t;
+
+typedef struct
+{
+  volatile _U32 u32EventFlags;
+  pf_task_handler_t pfTaskHandlerCb;
+  _U32 u32TaskParam;
+  rtcos_fifo_t stFifo;
+}rtcos_task_t;
+
+typedef struct
+{
+  _U08 u08TasksCount;
+  _U08 u08CurrentTask;
+  volatile _U32 u32SysTickCount;
+  pf_idle_handler_t pfIdleHandler;
+  volatile _U08 u08FutureEventsCount;
+  rtcos_future_event_t tstFutureEvents[RTCOS_MAX_FUTURE_EVENTS_COUNT];
+  rtcos_task_t tstTasks[RTCOS_MAX_TASKS_COUNT];
+  rtcos_timer_t tstTimers[RTCOS_MAX_TIMERS_COUNT];
+  _U08 u08TimersCount;
+}rtcos_ctx_t;
+
+static rtcos_ctx_t stRtcosCtx;
+
+static void _rtcos_fifo_init(_U08 u08TaskID)
+{
+  stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Head = 0;
+  stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Tail = 0;
+  stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count = 0;
+}
+
+static _BOOL _rtcos_fifo_empty(_U08 u08TaskID)
+{
+  return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count > 0)?_FALSE:_TRUE;
+}
+
+static _BOOL _rtcos_fifo_full(_U08 u08TaskID)
+{
+  return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count >= RTCOS_MAX_MESSAGES_COUNT)?_TRUE:_FALSE;
+}
+
+static _U08 _rtcos_fifo_count(_U08 u08TaskID)
+{
+  return stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count;
+}
+
+static rtcos_status_t _rtcos_fifo_push(_U08 u08TaskID, void *pvMsg)
+{
+  rtcos_status_t eRetVal;
+
+  if(_FALSE == _rtcos_fifo_full(u08TaskID))
+  {
+    stRtcosCtx
+      .tstTasks[u08TaskID]
+        .stFifo.tpvBuffer[stRtcosCtx.tstTasks[u08TaskID]
+          .stFifo.u08Head++] = pvMsg;
+    ++stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count;
+    if(stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Head >= RTCOS_MAX_MESSAGES_COUNT)
+    {
+      stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Head = 0;
+    }
+    eRetVal = RTCOS_ERR_NONE;
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_MSG_FULL;
+  }
+  return eRetVal;
+}
+
+static rtcos_status_t _rtcos_fifo_pop(_U08 u08TaskID, void **ppvMsg)
+{
+  rtcos_status_t eRetVal;
+
+  if(_FALSE == _rtcos_fifo_empty(u08TaskID))
+  {
+    *ppvMsg = stRtcosCtx
+                .tstTasks[u08TaskID]
+                  .stFifo.tpvBuffer[stRtcosCtx.tstTasks[u08TaskID]
+                    .stFifo.u08Tail++];
+    --stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count;
+    if(stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Tail >= RTCOS_MAX_MESSAGES_COUNT)
+    {
+      stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Tail = 0;
+    }
+    eRetVal = RTCOS_ERR_NONE;
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_MSG_EMPTY;
+  }
+  return eRetVal;
+}
+
+static _BOOL _rtcos_find_ready_task(_U08 *u08NewCurrTaskID)
+{
+  _U08 u08Index;
+  _BOOL bRetVal;
+
+  bRetVal = _FALSE;
+  for(u08Index = 0; u08Index < stRtcosCtx.u08TasksCount; ++u08Index)
+  {
+    if((0 != stRtcosCtx.tstTasks[u08Index].u32EventFlags) ||
+       (_FALSE == _rtcos_fifo_empty(u08Index)))
+    {
+      *u08NewCurrTaskID = u08Index;
+      bRetVal = _TRUE;
+      break;
+    }
+  }
+  return bRetVal;
+}
+
+static void _rtcos_run_ready_task(_U08 u08NewCurrTaskID)
+{
+  _U32 u32UnhandledEvents;
+  _U32 u32CurrentEvents;
+
+  ENTER_CRITICAL_SECTION();
+  stRtcosCtx.u08CurrentTask = u08NewCurrTaskID;
+  u32CurrentEvents = stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32EventFlags;
+  stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32EventFlags = 0;  
+  EXIT_CRITICAL_SECTION();
+
+  u32UnhandledEvents = (stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].pfTaskHandlerCb)
+                       (u32CurrentEvents,
+                        _rtcos_fifo_count(stRtcosCtx.u08CurrentTask),
+                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32TaskParam);
+  ENTER_CRITICAL_SECTION();
+  stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32EventFlags |= u32UnhandledEvents;
+  EXIT_CRITICAL_SECTION();
+}
+
+static rtcos_status_t _rtcos_find_future_event(_U08 u08TaskID,
+                                               _U32 u32EventFlags,
+                                               _U08 *pu08FoundEventIdx)
+{
+  _U08 u08Index;
+  rtcos_status_t eRetVal;
+
+  eRetVal = RTCOS_ERR_NOT_FOUND;
+  for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
+  {
+    if((_TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse) &&
+       (stRtcosCtx.tstFutureEvents[u08Index].u08TaskID == u08TaskID) && 
+       (stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags == u32EventFlags))
+    {
+      *pu08FoundEventIdx = u08Index;
+      eRetVal = RTCOS_ERR_NONE;
+      break;
+    }
+  }
+  return eRetVal;
+}
+
+static rtcos_status_t _rtcos_delete_future_event(_U08 u08TaskID, _U32 u32EventFlags)
+{
+  rtcos_status_t eRetVal;
+  _U08 u08FoundEventIdx;
+
+  eRetVal = _rtcos_find_future_event(u08TaskID, u32EventFlags, &u08FoundEventIdx);
+  if(RTCOS_ERR_NONE == eRetVal)
+  {
+    stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = _FALSE;
+    if(stRtcosCtx.u08FutureEventsCount > 0)
+    {
+      stRtcosCtx.u08FutureEventsCount--;
+    }
+  }
+  return eRetVal;
+}
+
+static rtcos_status_t _rtcos_find_empty_future_event_index(_U08 *pu08FoundEventIdx)
+{
+  _U08 u08Index;
+  rtcos_status_t eRetVal;
+
+  eRetVal = RTCOS_ERR_NOT_FOUND;
+  for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
+  {
+    if(_FALSE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
+    {
+      *pu08FoundEventIdx = u08Index;
+      eRetVal = RTCOS_ERR_NONE;
+      break;
+    }
+  }
+  return eRetVal;
+}
+
+static rtcos_status_t _rtcos_add_future_event(_U08 u08TaskID,
+                                              _U32 u32EventFlags,
+                                              _U32 u32EventDelay,
+                                              _BOOL bPeriodicEvent)
+{
+  _U08 u08FoundEventIdx;
+  rtcos_status_t eRetVal;
+
+  ENTER_CRITICAL_SECTION();
+  eRetVal = _rtcos_find_future_event(u08TaskID, u32EventFlags, &u08FoundEventIdx);
+  if(RTCOS_ERR_NONE == eRetVal)
+  {
+    stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32Timeout = u32EventDelay;
+  }
+  else
+  {
+    eRetVal = _rtcos_find_empty_future_event_index(&u08FoundEventIdx);
+    if(RTCOS_ERR_NONE == eRetVal)
+    {
+      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = _TRUE;
+      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32Timeout = u32EventDelay;
+      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u08TaskID = u08TaskID;
+      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32EventFlags = u32EventFlags;
+      ++stRtcosCtx.u08FutureEventsCount;
+      if(_TRUE == bPeriodicEvent)
+      {   
+        stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadTimeout = u32EventDelay;
+      }
+      else
+      {
+        stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadTimeout = 0;
+      }
+    }
+  }
+  EXIT_CRITICAL_SECTION();
+  return eRetVal;
+}
  
-// keeps track of information about each timer in the system
-typedef struct _TimerInfo_t
+static rtcos_status_t _rtcos_count_events(_U32 u32EventFlags)
 {
-    osTimer_t              mTimer;
-    volatile _bool          mUsed;
-    osTimer_type_t         mPeriodType;
-} TimerInfo_t;
-
-// information about the entire system in one structure
-typedef struct _OSInfo_t
-{
-    // current number of tasks in the system
-    osIndex_t               mTaskCount;    
-    // current number of future events in the system
-    osTaskID_t              mCurrTask;
-    // tracks "time" in the system
-    volatile osTick_t       mSystemTickCount;
-    // stores the client routine to be called when the system can sleep
-    pSystemSleepHandler_t   mClientSystemSleepHandler;
-    // current number of future events in the system
-    volatile osIndex_t      mFutureEventCount;
-    // an array of all the future events to send
-    FutureEventInfo_t       mFutureEventArray[MAX_FUTURE_EVENTS];
-    // an array of information about each task
-    TaskInfo_t              mTaskInfoArray[MAX_TASKS_IN_SYSTEM];
-    // an array of information about each timer
-    TimerInfo_t             mTimerInfoArray[MAX_TIMERS_IN_SYSTEM];
-    // current number of timers in the system
-    osIndex_t               mTimersCount;
-} OSInfo_t;
-
-//******************************************************************************
-// Globals
-//******************************************************************************
-
-// contains the status of the os, tasks, events, messages, ...
-static OSInfo_t gOS;
-
-//******************************************************************************
-// Prototypes
-//******************************************************************************
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-static osStatus_t os_FIFOInit( osTaskID_t taskID );
-static _bool os_FIFOEmpty( osTaskID_t taskID );
-static int os_GetFIFOCount( osTaskID_t taskID );
-
-#endif
-
-
-/******************************************************************************
-    @fn     osInit
-
-    @brief  System init should before any other os call.
-
-    @param  
-            
-    @return osStatus_t
-******************************************************************************/
-osStatus_t rtcOsInit( void )
-{
-    osIndex_t taskIdx, futureEventIdx, timerIdx;
-    
-    // clear out the task info
-    for ( taskIdx = 0; taskIdx < MAX_TASKS_IN_SYSTEM; ++taskIdx )
-    {
-        // clear the task event processing routine, ie no task here
-        gOS.mTaskInfoArray[taskIdx].mEventHandler = NULL;
-        // clear any task events
-        gOS.mTaskInfoArray[taskIdx].mEventFlags = 0;
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-        os_FIFOInit( taskIdx );    
-#endif
-    }
-    
-    // clear out the future event info
-    for ( futureEventIdx = 0; futureEventIdx < MAX_FUTURE_EVENTS; ++futureEventIdx )
-    {
-        gOS.mFutureEventArray[futureEventIdx].mInUse = FALSE;
-        gOS.mFutureEventArray[futureEventIdx].mTaskID = 0;
-        gOS.mFutureEventArray[futureEventIdx].mEventFlags = 0;
-        gOS.mFutureEventArray[futureEventIdx].mTimeout = 0;
-        gOS.mFutureEventArray[futureEventIdx].mReloadTimeout = 0;
-    }
-
-    // init a variety of global variables
-    gOS.mCurrTask = 0;
-    gOS.mSystemTickCount = 0;
-    gOS.mTaskCount = 0;
-    gOS.mFutureEventCount = 0;
-    gOS.mClientSystemSleepHandler = NULL;
-
-    gOS.mTimersCount = 0;
-    for ( timerIdx = 0; timerIdx < MAX_TASKS_IN_SYSTEM; ++timerIdx )
-    {
-        // initialize timer start tick
-        gOS.mTimerInfoArray[timerIdx].mTimer.mStartTickCount = 0;
-        // initialize timer period
-        gOS.mTimerInfoArray[timerIdx].mTimer.mTickDelay = 0;
-        gOS.mTimerInfoArray[timerIdx].mUsed = FALSE;
-        gOS.mTimerInfoArray[timerIdx].mTimer.pfCb = NULL;
-    }
-    
-
-    return OS_ERR_NONE;
+  return (u32EventFlags)?RTCOS_ERR_NONE:RTCOS_ERR_NO_EVENT;
 }
 
-/******************************************************************************
-    @fn     osRegisterTaskEventHandler
-
-    @brief  System init should call this for each task.  An error
-            is returned if the task slot is already occupied.
-
-    @param  taskEventHandler - pointer to task event handler
-            
-    @return osStatus_t
-******************************************************************************/
-osStatus_t rtcOsRegisterTaskEventHandler( pTaskEventHandler_t taskEventHandler, osTaskID_t taskID,
-                                     osTaskParam_t taskParam )
+static rtcos_status_t _rtcos_check_event_input(_U08 u08TaskID, _U32 u32EventFlags)
 {
-    osStatus_t retCode;
-    
-    if ( taskID >= MAX_TASKS_IN_SYSTEM )
+  rtcos_status_t eRetVal;
+
+  eRetVal = _rtcos_count_events(u32EventFlags);
+  if(RTCOS_ERR_NONE == eRetVal)
+  {
+    if(u08TaskID >= stRtcosCtx.u08TasksCount)
     {
-        return OS_ERR_OUT_OF_RANGE;    
+      eRetVal = RTCOS_ERR_INVALID_TASK;
     }
-    
-    if ( gOS.mTaskInfoArray[taskID].mEventHandler != NULL )
+  }
+  return eRetVal;
+}
+
+void rtcos_init(void)
+{
+  _U08 u08Index;
+
+  for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
+  {
+    stRtcosCtx.tstTasks[u08Index].pfTaskHandlerCb = _NIL;
+    stRtcosCtx.tstTasks[u08Index].u32EventFlags = 0;
+    _rtcos_fifo_init(u08Index);
+  }
+  for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
+  {
+    stRtcosCtx.tstFutureEvents[u08Index].bInUse = _FALSE;
+    stRtcosCtx.tstFutureEvents[u08Index].u08TaskID = 0;
+    stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags = 0;
+    stRtcosCtx.tstFutureEvents[u08Index].u32Timeout = 0;
+    stRtcosCtx.tstFutureEvents[u08Index].u32ReloadTimeout = 0;
+  }
+  for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
+  {
+    stRtcosCtx.tstTimers[u08Index].u32StartTickCount = 0;
+    stRtcosCtx.tstTimers[u08Index].u32TickDelay = 0;
+    stRtcosCtx.tstTimers[u08Index].bInUse = _FALSE;
+    stRtcosCtx.tstTimers[u08Index].pfTimerCb = _NIL;
+  }
+  stRtcosCtx.u08CurrentTask = 0;
+  stRtcosCtx.u32SysTickCount = 0;
+  stRtcosCtx.u08TasksCount = 0;
+  stRtcosCtx.u08FutureEventsCount = 0;
+  stRtcosCtx.pfIdleHandler = _NIL;
+  stRtcosCtx.u08TimersCount = 0;
+}
+
+rtcos_status_t rtcos_register_task_handler(pf_task_handler_t pfTaskHandler,
+                                           _U08 u08TaskID,
+                                           _U32 u32TaskParam)
+{
+  rtcos_status_t eRetVal;
+
+  if(u08TaskID < RTCOS_MAX_TASKS_COUNT)
+  {
+    if(stRtcosCtx.tstTasks[u08TaskID].pfTaskHandlerCb != _NIL)
     {
-        // already have a task assigned to this slot
-        retCode = OS_ERR_IN_USE;
+      eRetVal = RTCOS_ERR_IN_USE;
     }
     else
     {
-        // still space for the task
-        gOS.mTaskInfoArray[taskID].mEventHandler = taskEventHandler;
-        gOS.mTaskInfoArray[taskID].mTaskParam = taskParam;
-        ++gOS.mTaskCount;
-        retCode = OS_ERR_NONE;
+      stRtcosCtx.tstTasks[u08TaskID].pfTaskHandlerCb = pfTaskHandler;
+      stRtcosCtx.tstTasks[u08TaskID].u32TaskParam = u32TaskParam;
+      ++stRtcosCtx.u08TasksCount;
+      eRetVal = RTCOS_ERR_NONE;
     }
-    
-    return retCode;
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_OUT_OF_RANGE;
+  }
+  return eRetVal;
 }
 
-/******************************************************************************
-    @fn     osRegisterSystemSleepHandler
-
-    @brief  System init should call this to install a callback for
-            when the system can go to sleep.
-
-    @param  taskEventHandler - pointer to task event handler
-            
-    @return  osStatus_t
-******************************************************************************/
-osStatus_t rtcOsRegisterSystemSleepHandler( pSystemSleepHandler_t sleepHandler )
+rtcos_status_t rtcos_register_idle_handler(pf_idle_handler_t pfIdleHandler)
 {
-    gOS.mClientSystemSleepHandler = sleepHandler;    
-    
-    return OS_ERR_NONE;
+  rtcos_status_t eRetVal;
+
+  if(pfIdleHandler)
+  {
+    stRtcosCtx.pfIdleHandler = pfIdleHandler; 
+    eRetVal = RTCOS_ERR_NONE;
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_ARG;
+  }
+  return eRetVal;
 }
 
-
-/******************************************************************************
-    @fn     os_FindReadyTask
-
-    @brief  This function finds the highest priority task with some
-            event or message.
-
-    @param  
-            
-    return  TRUE, if it finds a ready task, FALSE otherwise  
-******************************************************************************/
-static _bool os_FindReadyTask( osTaskID_t *newCurrTask )
+rtcos_status_t rtcos_send_message(_U08 u08TaskID, void *pMsg)
 {
-    osIndex_t taskIdx;
-    
-    // find the first task that has events
-    for(taskIdx = 0; ( taskIdx < gOS.mTaskCount ); ++taskIdx )
+  rtcos_status_t eRetVal;
+
+  if(u08TaskID < stRtcosCtx.u08TasksCount)
+  {
+    ENTER_CRITICAL_SECTION();
+    eRetVal = _rtcos_fifo_push(u08TaskID, pMsg);
+    EXIT_CRITICAL_SECTION();
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_INVALID_TASK;
+  }
+  return eRetVal;
+}
+
+rtcos_status_t rtcos_get_message(void * *pMsg)
+{
+  rtcos_status_t eRetVal;
+
+  if(stRtcosCtx.u08CurrentTask < stRtcosCtx.u08TasksCount)
+  {
+    ENTER_CRITICAL_SECTION();
+    eRetVal = _rtcos_fifo_pop(stRtcosCtx.u08CurrentTask, pMsg);
+    EXIT_CRITICAL_SECTION();
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_INVALID_TASK;
+  }
+  return eRetVal;
+}
+
+_U08 rtcos_create_timer(rtcos_timer_type_t periodType, pf_timer_cb_t pfTimerCb, void *pvArg)
+{
+  _U08 eRetVal;
+
+  ENTER_CRITICAL_SECTION();
+  if(stRtcosCtx.u08TimersCount >= RTCOS_MAX_TIMERS_COUNT)
+  {
+    eRetVal = RTCOS_ERR_OUT_OF_RESOURCES;
+  }
+  else
+  {
+    stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].mPeriodType = periodType;
+    stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pfTimerCb = pfTimerCb;
+    eRetVal = stRtcosCtx.u08TimersCount++;
+  }
+  EXIT_CRITICAL_SECTION();
+  return eRetVal;
+}
+
+rtcos_status_t rtcos_start_timer(_U08 u08TimerID, _U32 u32PeriodInTicks)
+{
+  rtcos_status_t eRetVal;
+
+  ENTER_CRITICAL_SECTION();
+  if(u08TimerID >= RTCOS_MAX_TIMERS_COUNT)
+  {
+    eRetVal = RTCOS_ERR_OUT_OF_RESOURCES;
+  }
+  else
+  {
+    stRtcosCtx.tstTimers[u08TimerID].u32TickDelay = u32PeriodInTicks;
+    stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount = stRtcosCtx.u32SysTickCount;
+    stRtcosCtx.tstTimers[u08TimerID].bInUse = _TRUE;
+    eRetVal = RTCOS_ERR_NONE;
+  }
+  EXIT_CRITICAL_SECTION();
+  return eRetVal;
+}
+
+rtcos_status_t rtcos_stop_timer(_U08 u08TimerID)
+{
+  rtcos_status_t eRetVal;
+
+  ENTER_CRITICAL_SECTION();
+  if(u08TimerID >= RTCOS_MAX_TIMERS_COUNT)
+  {
+    eRetVal = RTCOS_ERR_OUT_OF_RESOURCES;
+  }
+  else
+  {
+    stRtcosCtx.tstTimers[u08TimerID].bInUse = _FALSE;
+    eRetVal = RTCOS_ERR_NONE;
+  }
+  EXIT_CRITICAL_SECTION();
+  return eRetVal;
+}
+
+_BOOL rtcos_timer_expired(_U08 u08TimerID)
+{
+  _U32 u32CurrentTickCount;
+  _BOOL bExpired;
+
+  bExpired = _FALSE;
+  u32CurrentTickCount = stRtcosCtx.u32SysTickCount;
+  ENTER_CRITICAL_SECTION();
+  if((stRtcosCtx.tstTimers[u08TimerID].bInUse) && (u08TimerID < RTCOS_MAX_TIMERS_COUNT))
+  {
+    if((u32CurrentTickCount - stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount) >
+       (stRtcosCtx.tstTimers[u08TimerID].u32TickDelay))
     {
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-        if (( gOS.mTaskInfoArray[ taskIdx ].mEventFlags != 0 ) ||
-            ( FALSE == os_FIFOEmpty( taskIdx )))
-#else                
-        if ( gOS.mTaskInfoArray[ taskIdx ].mEventFlags != 0 )
-#endif  
-        {   // this task has either an event or message
-            *newCurrTask = taskIdx;
-            return TRUE;
-        }
+      bExpired = _TRUE;
     }
-    
-    return FALSE;
+  }
+  EXIT_CRITICAL_SECTION();
+  return bExpired;
 }
 
-/******************************************************************************
-    @fn     os_RunReadyTask
-
-    @brief  This function runs the task that has the highest priority
-            and is ready.
-
-    @param  
-            
-    return  
-******************************************************************************/
-static void os_RunReadyTask( osTaskID_t newCurrTask )
+rtcos_status_t rtcos_send_event(_U08 u08TaskID,
+                                _U32 u32EventFlags,
+                                _U32 u32EventDelay,
+                                _BOOL bPeriodicEvent)
 {
-    osEvents_t unhandledEvents, currentEvents;
-    CRITICAL_SECTION_VARIABLE;
+  rtcos_status_t eRetVal;
 
-    ENTER_CRITICAL_SECTION;
-    gOS.mCurrTask = newCurrTask;
-    currentEvents = gOS.mTaskInfoArray[ gOS.mCurrTask ].mEventFlags;
-    // clear all events so that if new ones come in via an ISR they can be saved
-    gOS.mTaskInfoArray[ gOS.mCurrTask ].mEventFlags = 0;  
-    EXIT_CRITICAL_SECTION;
-
-    // calling the task with events for it
-    // returns the task events that were NOT handled
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-    unhandledEvents = ( gOS.mTaskInfoArray[gOS.mCurrTask].mEventHandler )( currentEvents,
-                         os_GetFIFOCount( gOS.mCurrTask ) , gOS.mTaskInfoArray[gOS.mCurrTask].mTaskParam );
-#else
-    unhandledEvents = ( gOS.mTaskInfoArray[gOS.mCurrTask].mEventHandler )( currentEvents,
-                         0 , gOS.mTaskInfoArray[gOS.mCurrTask].mTaskParam );
-#endif
-
-    ENTER_CRITICAL_SECTION;
-    // some new events might have come in during the task call
-    // so add them to the events that were NOT handled
-    gOS.mTaskInfoArray[ gOS.mCurrTask ].mEventFlags |= unhandledEvents;  
-    EXIT_CRITICAL_SECTION;
-}
-
-/******************************************************************************
-    @fn     osRun
-
-    @brief  This function finds the highest priority task with some event.
-            When it finds a task with events, calls the task with the
-            events.  If no events or future events are in the sytem
-            then the client's sleep routine can be called.
-
-    @param  
-            
-    return  
-******************************************************************************/
-void rtcOsRun( void )
-{
-    _bool foundReadyTask;
-    osTaskID_t newCurrTask;
-    CRITICAL_SECTION_VARIABLE;
-
-    // infinite loop for this application
-    // spin here and call the task's that have events
-    while ( 1 )
-    {   
-        ENTER_CRITICAL_SECTION;
-        foundReadyTask = os_FindReadyTask( &newCurrTask );
-        EXIT_CRITICAL_SECTION;
-        
-        if ( TRUE == foundReadyTask )
-        {
-            os_RunReadyTask( newCurrTask );
-        }
-        else if (( NULL != gOS.mClientSystemSleepHandler ) && 
-                 ( 0 == gOS.mFutureEventCount ))
-        {   // no events were found in the system, we could go to sleep here
-            ( gOS.mClientSystemSleepHandler )();      
-        }
-    }
-}
-
-/******************************************************************************
-    @fn     osUpdateTick
-
-    @brief  This routine should be called every time a tick occurs in the
-            system.  A tick is system dependent and is the measuring
-            point for delay of sending events.
-
-    @param  
-            
-    @return   
-******************************************************************************/
-void rtcOsUpdateTick( void )
-{
-    osIndex_t idx;
-    CRITICAL_SECTION_VARIABLE;
-    
-    ENTER_CRITICAL_SECTION;
-    ++gOS.mSystemTickCount;
-    
-    for( idx = 0; idx < MAX_FUTURE_EVENTS; ++idx )
-    {   // look through the array and every in use slot
-        // needs to decrement the delay and see if it it time
-        // to send the event by moving the event to the current
-        // event array
-        if ( gOS.mFutureEventArray[idx].mInUse == TRUE )
-        {
-            --gOS.mFutureEventArray[idx].mTimeout; 
-            if ( gOS.mFutureEventArray[idx].mTimeout == 0 )
-            {
-                if(gOS.mFutureEventCount > 0)
-                {
-                    gOS.mFutureEventCount--;
-                }
-                // transfer the future event to the now event since the delay is 0
-                gOS.mTaskInfoArray[gOS.mFutureEventArray[idx].mTaskID].mEventFlags |= 
-                    gOS.mFutureEventArray[idx].mEventFlags;
-                if ( gOS.mFutureEventArray[idx].mReloadTimeout == 0 )
-                {   // disable the slot, so that it can be reused
-                    gOS.mFutureEventArray[idx].mInUse = FALSE;
-                }
-                else // reload tick count is non zero so reload the time
-                {   // event will be sent again in x ticks
-                    gOS.mFutureEventArray[idx].mTimeout = gOS.mFutureEventArray[idx].mReloadTimeout;    
-                }
-            }
-        }
-    }
-    if(gOS.mTimersCount > 0)
+  eRetVal = _rtcos_check_event_input(u08TaskID, u32EventFlags);
+  if(RTCOS_ERR_NONE == eRetVal)
+  {
+    if(0 == u32EventDelay)
     {
-        for( idx = 0; idx < gOS.mTimersCount; idx++ )
-        {
-            if (rtcOsTimerExpired(idx))
-            {
-                if(gOS.mTimerInfoArray[idx].mTimer.pfCb)
-                {
-                    gOS.mTimerInfoArray[idx].mTimer.pfCb(0);
-                }
-                if (gOS.mTimerInfoArray[idx].mPeriodType == OS_TIMER_ONE_SHOT)
-                {
-                    gOS.mTimerInfoArray[idx].mUsed = FALSE;
-                }
-                gOS.mTimerInfoArray[idx].mTimer.mStartTickCount = gOS.mSystemTickCount;
-            }
-        }
-    }
-    
-    EXIT_CRITICAL_SECTION;
-}
-
-/******************************************************************************
-    @fn     os_FindFutureEvent
-
-    @brief  Search through future event array and the task + event combo.
-
-    @param  taskID - task to send the event to
-            eventFlag - bit flag event
-            foundSlot - pointer to place to put the index in the array
-            
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_FindFutureEvent( osTaskID_t taskID, osEvents_t eventFlag, osIndex_t *foundSlot )
-{
-    osIndex_t idx;
-
-    for( idx = 0; idx < MAX_FUTURE_EVENTS; ++idx )
-    {   // look through the array to find the task + event combo
-        if (( gOS.mFutureEventArray[idx].mInUse == TRUE ) &&
-            ( gOS.mFutureEventArray[idx].mTaskID == taskID ) && 
-            ( gOS.mFutureEventArray[idx].mEventFlags == eventFlag ))
-        {
-            *foundSlot = idx;
-            return  OS_ERR_NONE;   
-        }
-    }
-    
-    return OS_ERR_NOT_FOUND;
-}
-
-/******************************************************************************
-    @fn     os_DeleteFutureEvent
-
-    @brief  Find a certain future event and delete the future event
-            which is the same as deleting it..
-
-    @param  taskID - task to clear the event
-            eventFlag - bit flag event
-            
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_DeleteFutureEvent( osTaskID_t taskID, osEvents_t eventFlag )
-{
-    osStatus_t retCode;
-    osIndex_t foundSlot;
-
-    retCode = os_FindFutureEvent( taskID, eventFlag, &foundSlot );
-    if ( retCode == OS_ERR_NONE )
-    {   // found the future event
-        // disable/delete by setting the slot inUse to FALSE
-        gOS.mFutureEventArray[foundSlot].mInUse = FALSE;
-        if(gOS.mFutureEventCount > 0)
-        {
-            gOS.mFutureEventCount--;
-        }
-        return OS_ERR_NONE;
-    }
-
-    return OS_ERR_NOT_FOUND;
-}    
-
-/******************************************************************************
-    @fn     os_FindEmptyFutureSlot
-
-    @brief  Search through the future event array to find an unused slot.
-
-    @param  foundSlot - pointer to place to put the index of the free slot
-            
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_FindEmptyFutureSlot( osIndex_t *foundSlot )
-{
-    osIndex_t idx;
-
-    for( idx = 0; idx < MAX_FUTURE_EVENTS; ++idx )
-    {   // look through the array to find an unused slot
-        if ( gOS.mFutureEventArray[idx].mInUse == FALSE )
-        {
-            *foundSlot = idx;
-            return  OS_ERR_NONE;   
-        }
-    }
-    
-    return OS_ERR_NOT_FOUND;
-}
-
-/******************************************************************************
-    @fn     os_AddFutureEvent
-
-    @brief  Schedule a future event if there is space in the future event
-            array.  First look if there is already a future event
-            in the array, if not find an empty spot.
-
-    @param  taskID - task to send the event to
-            eventFlag - bit flag event
-            delayTime - how long to wait before sending event, if 0
-                        send immediately
-            
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_AddFutureEvent( osTaskID_t taskID, osEvents_t eventFlag, osTick_t delayTime, _bool reloadDelay )
-{
-    osIndex_t futureSlot;
-    osStatus_t retCode;
-    CRITICAL_SECTION_VARIABLE;
-    
-    ENTER_CRITICAL_SECTION;
-    retCode = os_FindFutureEvent( taskID, eventFlag, &futureSlot );
-    if ( retCode == OS_ERR_NONE )
-    {   // found the task + event combo in the array
-        // just reset the delay to the new value
-        gOS.mFutureEventArray[ futureSlot ].mTimeout = delayTime;    
-    }
-    else    // task + event combo was not in the future event array
-    {
-        retCode = os_FindEmptyFutureSlot( &futureSlot ); 
-        if ( retCode == OS_ERR_NONE )
-        {   // found a free slot in the array
-            gOS.mFutureEventArray[ futureSlot ].mInUse = TRUE;    
-            gOS.mFutureEventArray[ futureSlot ].mTimeout = delayTime;    
-            gOS.mFutureEventArray[ futureSlot ].mTaskID = taskID;    
-            gOS.mFutureEventArray[ futureSlot ].mEventFlags = eventFlag; 
-            ++gOS.mFutureEventCount;
-            if ( reloadDelay == TRUE )
-            {   
-                gOS.mFutureEventArray[ futureSlot ].mReloadTimeout = delayTime; 
-            }
-            else
-            {
-                gOS.mFutureEventArray[ futureSlot ].mReloadTimeout = 0; 
-            }
-        }
-    }
-
-    EXIT_CRITICAL_SECTION;
-
-    return retCode;
-}
-
-/******************************************************************************
-    @fn     os_CountEvents
-
-    @brief  Count the number of event flags set.  There should only be one.
-            Return an error if no events are set and if they are
-            more than 1 set.
-
-    @param  eventFlag - bit flag event
-            
-    @return osStatus_t  
-******************************************************************************/
-#define EVENT_BIT_COUNT        ( sizeof( osEvents_t ) * 8 )    
-static osStatus_t os_CountEvents( osEvents_t eventFlag )
-{
-#if 0   // if we want to enforce only setting one event on each call
-    int idx;
-    int bitCount = 0;
-
-    // walk through the event bit flags and count them
-    for ( idx = 0; ( idx < EVENT_BIT_COUNT ) && ( eventFlag ); ++idx )
-    {
-        if ( eventFlag & 1 ))
-        {   // bit is set
-            ++bitCount;
-            eventFlag = eventFlag >> 1; 
-        }
-    }
-
-    if ( bitCount == 0 )
-    {   // must have at least one event flag set
-        return OS_ERR_NO_EVENT;
-    }
-    
-    if ( bitCount == 1 )
-    {   // ahh, just the right number
-        return OS_ERR_NONE;
-    }
-    
-    // more than 1 event flag was set
-    return OS_ERR_TOO_MANY_EVENTS;  
-#else
-    // right now we only care if at least one flag is set
-    if ( eventFlag )
-    {   // at least one event is set
-        return OS_ERR_NONE;
-    }
-    else
-    {   // no events are set
-        return OS_ERR_NO_EVENT;
-    }
-#endif    
-}
-
-/******************************************************************************
-    @fn     os_CheckEventInput
-
-    @brief  Check the inputs to the event routines.
-
-    @param  taskID - task to send the event to
-            eventFlag - bit flag event
-            
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_CheckEventInput( osTaskID_t taskID, osEvents_t eventFlag )
-{
-    osStatus_t retCode;
-    
-    retCode = os_CountEvents( eventFlag );
-    if ( retCode != OS_ERR_NONE )
-    {   // more than one event flag is set
-        return retCode;
-    }
-
-    if ( taskID >= gOS.mTaskCount )
-    {   // bad task number
-        return OS_ERR_INVALID_TASK;
-    }
-    
-    return OS_ERR_NONE;
-}
-
-/******************************************************************************
-    @fn     osSendEvent
-
-    @brief  Set an event for a certain task.
-
-    @param  taskID - task to send the event to
-            eventFlag - bit flag event
-            delayTime - how long to wait before sending event, if 0
-                        send immediately
-            
-    @return osStatus_t  
-******************************************************************************/
-osStatus_t rtcOsSendEvent( osTaskID_t taskID, osEvents_t eventFlag, osTick_t tickCountDelay, _bool reloadDelay )
-{
-    osStatus_t retCode;
-    CRITICAL_SECTION_VARIABLE;
-
-    retCode = os_CheckEventInput( taskID, eventFlag );
-    if ( retCode != OS_ERR_NONE )
-    {   // problems with the input parameters
-        return retCode;
-    }
-
-    if ( tickCountDelay == 0 )
-    {   // send event immediately since there is no delay ticks
-        ENTER_CRITICAL_SECTION;
-        gOS.mTaskInfoArray[taskID].mEventFlags |= eventFlag;  
-        EXIT_CRITICAL_SECTION;
-        retCode = OS_ERR_NONE;
-    }
-    else    // delayed event
-    {   // must add it to the future event system
-        retCode = os_AddFutureEvent( taskID, eventFlag, tickCountDelay, reloadDelay );    
-    }
-    
-    return retCode;
-}
-
-/******************************************************************************
-    @fn     osClearEvent
-
-    @brief  Clear an event for a certain task, the event might be in
-            the current event flags or in a future event.  Must
-            clear them in both places.
-
-    @param  taskID - task to clear the event
-            eventFlag - bit flag event
-            
-    @return osStatus_t  
-******************************************************************************/
-osStatus_t rtcOsClearEvent( osTaskID_t taskID, osEvents_t eventFlag )
-{
-    osStatus_t retCode;
-    CRITICAL_SECTION_VARIABLE;
-    
-    retCode = os_CheckEventInput( taskID, eventFlag );
-    if ( retCode != OS_ERR_NONE )
-    {   // problems with the input parameters
-        return retCode;
-    }
-
-    ENTER_CRITICAL_SECTION;
-    // clear the current event flags
-    gOS.mTaskInfoArray[taskID].mEventFlags &= ~( eventFlag );  
-    // clear the future event flags
-    os_DeleteFutureEvent( taskID, eventFlag ); 
-    EXIT_CRITICAL_SECTION;
-    
-    return OS_ERR_NONE;
-}
-
-#if 1
-/******************************************************************************
-    @fn     osSetTickCount
-
-    @brief  Set the current tick count that is kept by the system.
-            FOR TESTING ONLY, TO CHECK OVERFLOW
-
-    @param  newCount - value for the tick count
-            
-    @return   
-******************************************************************************/
-void rtcOsSetTickCount( osTick_t newCount )
-{
-    gOS.mSystemTickCount = newCount;
-}
-#endif
-
-/******************************************************************************
-    @fn     osGetTickCount
-
-    @brief  Get the current tick count that is kept by the system.
-
-    @param  
-            
-    @return osTick_t, current tick count since boot  
-******************************************************************************/
-osTick_t rtcOsGetTickCount( void )
-{
-    osTick_t currTickCount;
-    
-    CRITICAL_SECTION_VARIABLE;
-    
-    ENTER_CRITICAL_SECTION;
-    
-    currTickCount =  gOS.mSystemTickCount;
-    
-    EXIT_CRITICAL_SECTION;
-        
-    return currTickCount;
-}
-
-void rtcOsDelay(osTick_t expireTickCount)
-{
-    osTick_t u32Tick;
-
-    u32Tick = rtcOsGetTickCount();
-    while((rtcOsGetTickCount() - u32Tick) != expireTickCount);
-}
-
-osTimerID_t rtcOsTimerCreate( osTimer_type_t periodType, pf_cb pfCb, void *argument )
-{
-    osTimerID_t retCode;
-
-    CRITICAL_SECTION_VARIABLE;
-
-    ENTER_CRITICAL_SECTION;
-
-    // create timer and insert it in the timer array
-    if ( gOS.mTimersCount >= MAX_TIMERS_IN_SYSTEM)
-    {
-        retCode = OS_ERR_OUT_OF_RESOURCES;
+      ENTER_CRITICAL_SECTION();
+      stRtcosCtx.tstTasks[u08TaskID].u32EventFlags |= u32EventFlags;
+      EXIT_CRITICAL_SECTION();
     }
     else
     {
-        // still space for the new timer
-        gOS.mTimerInfoArray[gOS.mTimersCount].mPeriodType = periodType;
-        gOS.mTimerInfoArray[gOS.mTimersCount].mTimer.pfCb = pfCb;
-        retCode = gOS.mTimersCount++;
+      eRetVal = _rtcos_add_future_event(u08TaskID, u32EventFlags, u32EventDelay, bPeriodicEvent);
     }
-
-    EXIT_CRITICAL_SECTION;
-
-    return retCode;
+  }
+  return eRetVal;
 }
 
-osStatus_t rtcOsTimerStart( osTimerID_t timerId, osTick_t expireTickCount )
+rtcos_status_t rtcos_clear_event(_U08 u08TaskID, _U32 u32EventFlags)
 {
-    osStatus_t retCode;
+  rtcos_status_t eRetVal;
 
-    CRITICAL_SECTION_VARIABLE;
-
-    ENTER_CRITICAL_SECTION;
-
-    // create timer and insert it in the timer array
-    if ( timerId >= MAX_TIMERS_IN_SYSTEM)
-    {
-        retCode = OS_ERR_OUT_OF_RESOURCES;
-    }
-    else
-    {
-        // still space for the new timer
-        gOS.mTimerInfoArray[timerId].mTimer.mTickDelay = expireTickCount;
-        gOS.mTimerInfoArray[timerId].mTimer.mStartTickCount = gOS.mSystemTickCount;
-        gOS.mTimerInfoArray[timerId].mUsed = TRUE;
-        retCode = OS_ERR_NONE;
-    }
-
-    EXIT_CRITICAL_SECTION;
-
-    return retCode;
+  eRetVal = _rtcos_check_event_input(u08TaskID, u32EventFlags);
+  if(RTCOS_ERR_NONE == eRetVal)
+  {
+    ENTER_CRITICAL_SECTION();
+    stRtcosCtx.tstTasks[u08TaskID].u32EventFlags &= ~(u32EventFlags);
+    _rtcos_delete_future_event(u08TaskID, u32EventFlags); 
+    EXIT_CRITICAL_SECTION();
+  }
+  return eRetVal;
 }
 
-osStatus_t rtcOsTimerStop( osTimerID_t timerId )
+void rtcos_set_tick_count(_U32 u32TickCount)
 {
-    osStatus_t retCode;
-
-    CRITICAL_SECTION_VARIABLE;
-
-    ENTER_CRITICAL_SECTION;
-
-    // create timer and insert it in the timer array
-    if ( timerId >= MAX_TIMERS_IN_SYSTEM)
-    {
-        retCode = OS_ERR_OUT_OF_RESOURCES;
-    }
-    else
-    {
-        // still space for the new timer
-        gOS.mTimerInfoArray[timerId].mUsed = FALSE;
-        retCode = OS_ERR_NONE;
-    }
-
-    EXIT_CRITICAL_SECTION;
-
-    return retCode;
+  stRtcosCtx.u32SysTickCount = u32TickCount;
 }
 
-/******************************************************************************
-    @fn     osTimerExpired
-
-    @brief  Client calls this to check if the timer has expired.
-            As long as the interval between two related events is not 
-            larger than the range of the uint32 there is no problem at all.
-            If you  keep the values as uint32 and subtract the earlier event 
-            time from the current event time with the subtract function 
-            you will get the correct interval even if there has 
-            been a counter rollover. This is a feature of proper integer 
-            arithmetic implementation as specified by IEEE and LabVIEW implements 
-            that too. Just try it out by subtracting 4294967295 from 10 
-            both set as unsigned int32 and you will see the result to be 
-            11 which is the difference between the two numbers when looked 
-            at as unsigned int32.
-
-    @param  newTimer - contains the tick count of the expiration
-                
-    @return osStatus_t  
-******************************************************************************/
-_bool rtcOsTimerExpired( osIndex_t timerID )
+_U32 rtcos_get_tick_count(void)
 {
-    _bool expired = FALSE;
-    osTick_t currentTick = gOS.mSystemTickCount;
+  _U32 u32CurrTickCount;
 
-    CRITICAL_SECTION_VARIABLE;
-   
-    ENTER_CRITICAL_SECTION;
+  ENTER_CRITICAL_SECTION();
+  u32CurrTickCount = stRtcosCtx.u32SysTickCount;
+  EXIT_CRITICAL_SECTION();
+  return u32CurrTickCount;
+}
 
-    if ( timerID >= MAX_TIMERS_IN_SYSTEM)
+void rtcos_delay(_U32 u32DelayTicksCount)
+{
+  _U32 u32Tick;
+
+  u32Tick = rtcos_get_tick_count();
+  while((rtcos_get_tick_count() - u32Tick) != u32DelayTicksCount);
+}
+
+void rtcos_run(void)
+{
+  _BOOL bFoundReadyTask;
+  _U08 u08NewCurrTaskID;
+
+  while(1)
+  {
+    ENTER_CRITICAL_SECTION();
+    bFoundReadyTask = _rtcos_find_ready_task(&u08NewCurrTaskID);
+    EXIT_CRITICAL_SECTION();
+    if(_TRUE == bFoundReadyTask)
     {
-        /* error */
+      _rtcos_run_ready_task(u08NewCurrTaskID);
     }
-    else if(gOS.mTimerInfoArray[timerID].mUsed)
+    else if((_NIL != stRtcosCtx.pfIdleHandler) &&
+            (0 == stRtcosCtx.u08FutureEventsCount))
     {
-        if ( (currentTick - gOS.mTimerInfoArray[timerID].mTimer.mStartTickCount) > gOS.mTimerInfoArray[timerID].mTimer.mTickDelay )
+      (stRtcosCtx.pfIdleHandler)();
+    }
+  }
+}
+
+void rtcos_update_tick(void)
+{
+  _U08 u08Index;
+  
+  ENTER_CRITICAL_SECTION();
+  ++stRtcosCtx.u32SysTickCount;
+  for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
+  {
+    if(_TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
+    {
+      --stRtcosCtx.tstFutureEvents[u08Index].u32Timeout; 
+      if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32Timeout)
+      {
+        if(stRtcosCtx.u08FutureEventsCount > 0)
         {
-            expired = TRUE;
+          stRtcosCtx.u08FutureEventsCount--;
         }
-    }
-    
-    EXIT_CRITICAL_SECTION;
-
-    return expired;
-}
-
-#if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
-
-/******************************************************************************
-    @fn     os_FIFOInit
-
-    @brief  Init the fifo that will hold a task's messages.
-
-    @param  
-
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_FIFOInit( osTaskID_t taskID )
-{
-    
-    gOS.mTaskInfoArray[ taskID ].mFifo.mHead = 0;    
-    gOS.mTaskInfoArray[ taskID ].mFifo.mTail = 0;
-    gOS.mTaskInfoArray[ taskID ].mFifo.mCount = 0;
-    
-    return OS_ERR_NONE;    
-}
-
-/******************************************************************************
-    @fn     os_FIFOEmpty
-
-    @brief  If count is 0 then the fifo is empty.
-
-    @param  taskID - task id
-
-    @return TRUE, if empty  
-******************************************************************************/
-static _bool os_FIFOEmpty( osTaskID_t taskID )
-{
-    return ( gOS.mTaskInfoArray[ taskID ].mFifo.mCount ? FALSE : TRUE );
-}
-
-/******************************************************************************
-    @fn     os_FIFOFull
-
-    @brief  If count is equal to the total capacity.
-
-    @param  taskID - task id
-
-    @return TRUE, if full  
-******************************************************************************/
-static _bool os_FIFOFull( osTaskID_t taskID )
-{
-    return ( gOS.mTaskInfoArray[ taskID ].mFifo.mCount >= MAX_MESSAGES_IN_SYSTEM );
-}
-
-/******************************************************************************
-    @fn     os_GetFIFOCount
-
-    @brief  Get the number of items in the FIFO.
-
-    @param  taskID - task id
-
-    @return count  
-******************************************************************************/
-static int os_GetFIFOCount( osTaskID_t taskID )
-{
-    return ( gOS.mTaskInfoArray[ taskID ].mFifo.mCount );
-}
-
-/******************************************************************************
-    @fn     os_FIFOPush
-
-    @brief  Put a message on the fifo for a certain task.
-
-    @param  taskID - task that receives the message
-            msg - put this on the fifo
-
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_FIFOPush( osTaskID_t taskID, osMsg_t msg )
-{
-    osStatus_t retCode;
-
-    if ( os_FIFOFull( taskID ) == FALSE )
-    {   // there is space in the fifo
-        gOS.mTaskInfoArray[ taskID ].mFifo.mBuffer[ gOS.mTaskInfoArray[ taskID ].mFifo.mHead++ ] = msg;
-        ++gOS.mTaskInfoArray[ taskID ].mFifo.mCount;
-        if ( gOS.mTaskInfoArray[ taskID ].mFifo.mHead >= MAX_MESSAGES_IN_SYSTEM )
-        {   // must wrap the head
-            gOS.mTaskInfoArray[ taskID ].mFifo.mHead = 0;
+        stRtcosCtx
+          .tstTasks[stRtcosCtx.tstFutureEvents[u08Index].u08TaskID]
+            .u32EventFlags |= stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags;
+        if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32ReloadTimeout)
+        {
+          stRtcosCtx.tstFutureEvents[u08Index].bInUse = _FALSE;
         }
-        retCode = OS_ERR_NONE;
+        else
+        {
+          stRtcosCtx.tstFutureEvents[u08Index].u32Timeout =
+          stRtcosCtx.tstFutureEvents[u08Index].u32ReloadTimeout;
+        }
+      }
     }
-    else
+  }
+  if(stRtcosCtx.u08TimersCount > 0)
+  {
+    for(u08Index = 0; u08Index < stRtcosCtx.u08TimersCount; u08Index++)
     {
-        retCode = OS_ERR_MSG_FULL; 
-    }   
-
-    return retCode;    
-}
-
-/******************************************************************************
-    @fn     os_FIFOPop
-
-    @brief  Retrieve a message for a certain task.
-
-    @param  taskID - task ID that should have a message waiting
-            pMsg - location to put the retrieve message
-
-    @return osStatus_t  
-******************************************************************************/
-static osStatus_t os_FIFOPop( osTaskID_t taskID, osMsg_t *pMsg )
-{
-    osStatus_t retCode;
-    
-    if ( os_FIFOEmpty( taskID ) == FALSE )
-    {   // there is something in the fifo to pop
-        *pMsg = gOS.mTaskInfoArray[ taskID ].mFifo.mBuffer[ gOS.mTaskInfoArray[ taskID ].mFifo.mTail++ ];
-        --gOS.mTaskInfoArray[ taskID ].mFifo.mCount;
-        if ( gOS.mTaskInfoArray[ taskID ].mFifo.mTail >= MAX_MESSAGES_IN_SYSTEM )
-        {   // must wrap the tail
-            gOS.mTaskInfoArray[ taskID ].mFifo.mTail = 0;
+      if(rtcos_timer_expired(u08Index))
+      {
+        if(stRtcosCtx.tstTimers[u08Index].pfTimerCb)
+        {
+          stRtcosCtx.tstTimers[u08Index].pfTimerCb(0);
         }
-        retCode = OS_ERR_NONE;
+        if(RTCOS_TIMER_ONE_SHOT == stRtcosCtx.tstTimers[u08Index].mPeriodType)
+        {
+          stRtcosCtx.tstTimers[u08Index].bInUse = _FALSE;
+        }
+        stRtcosCtx.tstTimers[u08Index].u32StartTickCount = stRtcosCtx.u32SysTickCount;
+      }
     }
-    else
-    {
-        retCode = OS_ERR_MSG_EMPTY; 
-    }   
-    return retCode;    
+  }
+  EXIT_CRITICAL_SECTION();
 }
-
-/******************************************************************************
-    @fn     osSendMessage
-
-    @brief  Send a message to a task.
-
-    @param  taskID - destination task ID
-            pMsg - pointer to message to send to the task
-
-    @return osStatus_t  
-******************************************************************************/
-osStatus_t rtcOsSendMessage( osTaskID_t taskID, osMsg_t pMsg )
-{
-    osStatus_t retCode;
-    CRITICAL_SECTION_VARIABLE;
-    
-    if ( taskID >= gOS.mTaskCount )
-    {   // bad task number
-        return OS_ERR_INVALID_TASK;
-    }
-
-    ENTER_CRITICAL_SECTION;
-    retCode = os_FIFOPush( taskID, pMsg );
-    EXIT_CRITICAL_SECTION;
-
-    return retCode;
-}
-
-/******************************************************************************
-    @fn     osGetMessage
-
-    @brief  Retrieve a message for this task.
-
-    @param  taskID - destination task ID
-            pMsg - pointer to message to send to the task
-
-    @return osStatus_t  
-******************************************************************************/
-osStatus_t rtcOsGetMessage( osMsg_t *pMsg )
-{
-    osStatus_t retCode;
-    CRITICAL_SECTION_VARIABLE;
-    
-    if ( gOS.mCurrTask >= gOS.mTaskCount )
-    {   // bad task number
-        return OS_ERR_INVALID_TASK;
-    }
-    
-    ENTER_CRITICAL_SECTION;
-    retCode = os_FIFOPop( gOS.mCurrTask, pMsg );
-    EXIT_CRITICAL_SECTION;
-
-    return retCode;
-}
-#endif
