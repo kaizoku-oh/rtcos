@@ -50,7 +50,7 @@
 //******************************************************************************
 // Includes
 //******************************************************************************
-#include "board_arduino_uno.h"
+#include "port.h"
 
 //******************************************************************************
 // OS return codes
@@ -66,18 +66,28 @@
 #define OS_ERR_MSG_FULL                 -8
 #define OS_ERR_MSG_EMPTY                -9
 
+#define _NIL                             0x00000000uL
+
 //******************************************************************************
 // Typedefs
 //******************************************************************************
+typedef enum
+{
+    OS_TIMER_PERIODIC = 0,
+    OS_TIMER_ONE_SHOT,
+} osTimer_type_t;
+
+typedef void (*pf_cb)( void const *pvArg );
 
 typedef struct _osTimer_t
 {
-	uint32			mStartTickCount;
+	volatile uint32	mStartTickCount;
 	uint32			mTickDelay;
+	pf_cb			pfCb;
 } osTimer_t, *osTimerPtr_t;
 
-
 typedef osEvents_t (*pTaskEventHandler_t)( osEvents_t eventFlags, osMsgCount_t msgCount, osTaskParam_t taskParam );
+
 typedef void (*pSystemSleepHandler_t)( void );
 
 //******************************************************************************
@@ -85,46 +95,49 @@ typedef void (*pSystemSleepHandler_t)( void );
 //******************************************************************************
 
 // call this routine after the basic hardware has been initialized
-osStatus_t osInit( void );
+osStatus_t rtcOsInit( void );
 
 // create tasks using this routine
-osStatus_t osRegisterTaskEventHandler( pTaskEventHandler_t taskEventHandler, osTaskID_t taskID,
+osStatus_t rtcOsRegisterTaskEventHandler( pTaskEventHandler_t taskEventHandler, osTaskID_t taskID,
                                      osTaskParam_t taskParam );
 
 // register a callback that will be invoked when the system has no events or messages
-osStatus_t osRegisterSystemSleepHandler( pSystemSleepHandler_t sleepHandler );
+osStatus_t rtcOsRegisterSystemSleepHandler( pSystemSleepHandler_t sleepHandler );
 
 // main() should call this as the last function, it will never return
-void osRun( void );
+void rtcOsRun( void );
 
 // this routine must be called every tick, could be 1 millisecond, whatever the system wants
 // the rate at which you call this routine determines send event delay time 
-void osUpdateTick( void );
+void rtcOsUpdateTick( void );
 
 // events
 // set tickCountDelay to 0 to send event immediately
 // set reloadDelay to TRUE in order to send the event again in tickCountDelay,
 // this event will continually be sent until it is cleared.
 // if tickCountDelay is 0 then reloadDelay is ignored
-osStatus_t osSendEvent( osTaskID_t taskID, osEvents_t eventFlag, osTick_t tickCountDelay, bool reloadDelay );
-osStatus_t osClearEvent( osTaskID_t taskID, osEvents_t eventFlag );
+osStatus_t rtcOsSendEvent( osTaskID_t taskID, osEvents_t eventFlag, osTick_t tickCountDelay, _bool reloadDelay );
+osStatus_t rtcOsClearEvent( osTaskID_t taskID, osEvents_t eventFlag );
 
 // time
 // create a timer to check if x amount of time has passed since
 // the timer was created.  Call osTimerExpired to find out
 // if the time has expired.
-void osSetTickCount( osTick_t newCount );
-osTick_t osGetTickCount( void );
-osStatus_t osTimerCreate( osTick_t expireTickCount, osTimer_t *newTimer );
+void rtcOsSetTickCount( osTick_t newCount );
+osTick_t rtcOsGetTickCount( void );
+osTimerID_t rtcOsTimerCreate( osTimer_type_t periodType, pf_cb pfCb, void *argument );
+osStatus_t rtcOsTimerStart( osTimerID_t timerId, osTick_t expireTickCount );
+osStatus_t rtcOsTimerStop( osTimerID_t timerId );
 // return true if expired
-bool osTimerExpired( osTimer_t *newTimer );
+_bool rtcOsTimerExpired( osIndex_t timerID );
+void rtcOsDelay(osTick_t expireTickCount);
 
 
 #if (defined MAX_MESSAGES_IN_SYSTEM) && (MAX_MESSAGES_IN_SYSTEM > 0)
 // messages
 // send a pointer to a message to a task
-osStatus_t osSendMessage( osTaskID_t taskID, osMsg_t pMsg );
-osStatus_t osGetMessage( osMsg_t *pMsg );
+osStatus_t rtcOsSendMessage( osTaskID_t taskID, osMsg_t pMsg );
+osStatus_t rtcOsGetMessage( osMsg_t *pMsg );
 #endif
 
-#endif
+#endif /* RTC_OS_H */

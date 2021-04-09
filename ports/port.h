@@ -15,9 +15,9 @@
 // Include the appropriate board file depending on the build
 //******************************************************************************
 
-#if BOARD_ARDUINO_XXXX
-#error "warning Copy the entire arduino_uno directory to your Arduino projects directory"
-
+#if BOARD_ARDUINO_UNO
+// #error "warning Copy the entire arduino_uno directory to your Arduino projects directory"
+#include "board_arduino_uno.h"
 #else
 #error "warning No board file has been specified for this build"
 
