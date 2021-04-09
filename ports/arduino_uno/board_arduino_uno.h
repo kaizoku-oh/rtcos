@@ -31,6 +31,7 @@ typedef short int16;
 typedef unsigned short uint16;
 typedef long int32;
 typedef unsigned long uint32;
+typedef unsigned char _bool;
 
 //******************************************************************************
 // Change the size of these if needed
@@ -43,6 +44,7 @@ typedef uint32 osMsg_t;
 typedef uint32 osTaskParam_t;
 typedef uint8 osMsgCount_t;
 typedef uint16 osIndex_t;
+typedef int8 osTimerID_t;
 
 //******************************************************************************
 // Define how this system handles critical sections
@@ -69,5 +71,9 @@ typedef uint16 osIndex_t;
 //******************************************************************************
 #define MAX_MESSAGES_IN_SYSTEM          3
 
+//******************************************************************************
+// Set the max number of timers that can be used
+//******************************************************************************
+#define MAX_TIMERS_IN_SYSTEM            3
 
 #endif
