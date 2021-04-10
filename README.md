@@ -13,8 +13,8 @@ Being hardware agnostic, RTC OS can work on any hardware platform that can provi
 
 ### Running the example app on PC
 ```bash
-$ gcc -Wall examples/app.c os/rtcos.c -Ios -Iports -Iconfig -o examples/app
-$ examples/app
+$ gcc -Wall examples/linux/app.c os/rtcos.c -Ios -Iconfig -Iexamples/linux -o examples/linux/app
+$ examples/linux/app
 Task one received PING event!
 Task two received PONG event!
 Task two received a message: Hello

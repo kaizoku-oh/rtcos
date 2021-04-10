@@ -2,10 +2,10 @@
  **************************************************************************************************
  *
  * @file    : config.h
- * @author  : 
+ * @author  : Bayrem GHARSELLAOUI
  * @version : 2.0
  * @date    : April 2021
- * @brief   : RTCOS configuration file
+ * @brief   : RTCOS default configuration file
  * 
  **************************************************************************************************
  * 
@@ -22,8 +22,15 @@
 #define CONFIG_H
 
 /*-----------------------------------------------------------------------------------------------*/
+/* Includes                                                                                      */
+/*-----------------------------------------------------------------------------------------------*/
+#include "RTCOSConfig.h"
+
+/*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
+/** System default configuration if no user configuration is specified */
+
 #ifndef RTCOS_MAX_TASKS_COUNT
 #define RTCOS_MAX_TASKS_COUNT                    2
 #endif /* RTCOS_MAX_TASKS_COUNT */
@@ -39,5 +46,16 @@
 #ifndef RTCOS_MAX_TIMERS_COUNT
 #define RTCOS_MAX_TIMERS_COUNT                   2
 #endif /* RTCOS_MAX_TIMERS_COUNT */
+
+/*-----------------------------------------------------------------------------------------------*/
+/* Macros                                                                                        */
+/*-----------------------------------------------------------------------------------------------*/
+#ifndef ENTER_CRITICAL_SECTION
+#define ENTER_CRITICAL_SECTION()
+#endif /* ENTER_CRITICAL_SECTION */
+
+#ifndef EXIT_CRITICAL_SECTION
+#define EXIT_CRITICAL_SECTION()
+#endif /* EXIT_CRITICAL_SECTION */
 
 #endif /* CONFIG_H */
