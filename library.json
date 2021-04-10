@@ -1,6 +1,6 @@
 {
-  "name": "RTC OS",
-  "version": "1.0.1",
+  "name": "RTCOS",
+  "version": "1.0.2",
   "description": "An event-driven RTC (Run To Completion) OS/scheduler dedicated to ultra constrained devices.",
   "keywords": "cooperative, event, scheduler, os",
   "repository":
@@ -8,6 +8,7 @@
     "type": "git",
     "url": "https://github.com/kaizoku-oh/rtcos.git"
   },
+  "examples": "examples/*/*",
   "authors":
   [
     {
