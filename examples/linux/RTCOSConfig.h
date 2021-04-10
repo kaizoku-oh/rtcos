@@ -8,14 +8,6 @@
  * @brief   : RTCOS user configuration example used to overrite os default configuration
  * 
  **************************************************************************************************
- * 
- * @project  : {Generic}
- * @board    : {Generic}
- * @target   : {Generic}
- * @compiler : {Generic}
- * 
- **************************************************************************************************
- *
  */
 
 #ifndef RTCOS_CONFIG_H
