@@ -54,3 +54,10 @@ dkms.conf
 
 # IDEs
 .vscode
+
+# Doxygen
+doc/html
+doc/latex
+doc/rtf
+doc/warnlog.txt
+doc/*.tmp
