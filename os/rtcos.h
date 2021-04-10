@@ -75,6 +75,11 @@ typedef enum
 /*-----------------------------------------------------------------------------------------------*/
 /* Functions                                                                                     */
 /*-----------------------------------------------------------------------------------------------*/
+#if defined(__cplusplus)
+extern "C"
+{
+#endif /* __cplusplus */
+
 void rtcos_init(void);
 void rtcos_run(void);
 void rtcos_delay(_u32);
@@ -91,5 +96,9 @@ rtcos_status_t rtcos_send_event(_u08, _u32, _u32, _bool);
 rtcos_status_t rtcos_clear_event(_u08, _u32);
 rtcos_status_t rtcos_send_message(_u08, void *);
 rtcos_status_t rtcos_get_message(void **);
+
+#if defined(__cplusplus)
+}
+#endif /* __cplusplus */
 
 #endif /* RTCOS_H */
