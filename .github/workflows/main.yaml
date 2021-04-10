@@ -32,3 +32,10 @@ jobs:
       run: |
         cd examples/arduino
         pio run
+
+    # Generate doxygene documentation
+    - name: Generate documentation
+      uses: mattnotmitt/doxygen-action@v1
+      with:
+          working-directory: '.'
+          doxyfile-path: 'docs/rtcos_doxyfile'

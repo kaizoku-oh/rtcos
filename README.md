@@ -1,8 +1,14 @@
-# RTC OS
+# RTC OS (Run To Completion Operating System)
 
+<p align="center">
+  <img src="https://github.com/kaizoku-oh/rtcos/blob/main/docs/image/logo.png">
+</p>
+
+<!-- ![RTCOS logo](https://github.com/kaizoku-oh/rtcos/blob/main/docs/image/logo.png) -->
 <!-- ![](https://github.com/<OWNER>/<REPOSITORY>/workflows/<WORKFLOW_NAME>/badge.svg) -->
 ![GitHub Build workflow status](https://github.com/kaizoku-oh/rtcos/workflows/Build/badge.svg)
 ![GitHub release](https://img.shields.io/github/v/release/kaizoku-oh/rtcos)
+[![dependencies Status](https://status.david-dm.org/gh/dwyl/esta.svg)](https://david-dm.org/dwyl/esta)
 ![GitHub issues](https://img.shields.io/github/issues/kaizoku-oh/rtcos)
 ![GitHub top language](https://img.shields.io/github/languages/top/kaizoku-oh/rtcos)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
