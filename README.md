@@ -11,17 +11,7 @@ RTC OS is written in pure C and doesn't need any thirdparty library or dependenc
 
 Being hardware agnostic, RTC OS can work on any hardware platform that can provide a hardware timer tick and optionally an interface to enter and exit critical section.
 
-### Running the example app on PC
-```bash
-$ gcc -Wall examples/linux/app.c os/rtcos.c -Ios -Iconfig -Iexamples/linux -o examples/linux/app
-$ examples/linux/app
-Task one received PING event!
-Task two received PONG event!
-Task two received a message: Hello
-Task one received PING event!
-Task two received PONG event!
-^C
-$ 
-```
+## Acknowledgments
+- This project is inspired from the work done by [Jon Norenberg](https://github.com/norenberg99) in [rtcOS](https://github.com/norenberg99/rtcOS) project.
 
 ![Twitter follow](https://img.shields.io/twitter/follow/kaizoku_ouh?style=social)
