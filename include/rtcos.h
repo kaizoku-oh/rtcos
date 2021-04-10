@@ -7,7 +7,22 @@
  * @date    : April 2021
  * @brief   : RTCOS header file
  * 
+ **************************************************************************************************
  */
+
+/**
+  @mainpage Project overview
+  @brief Hello! Welcome to RTCOS project documentation.<br>
+  RTCOS is an event-driven RTC (Run To Completion) scheduler
+  dedicated to ultra constrained IoT devices.<br>
+  The GitHub project link is The Git project path is https://github.com/kaizoku-oh/rtcos<br>
+  For further details, please refer to documentation available in doc/ directory.<br>
+*/
+
+/** @defgroup rtcos RTCOS
+  * @brief RTCOS Interface
+  * @{
+  */
 
 #ifndef RTCOS_H
 #define RTCOS_H
@@ -15,13 +30,22 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_exported_defines Exported defines
+  * @{
+  */
 #define _NIL                                     0x00000000uL
 #define _TRUE                                    (_bool)(1 == 1)
 #define _FALSE                                   (_bool)(0 == 1)
+/**
+  * @}
+  */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Types                                                                                         */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_exported_types Exported types
+  * @{
+  */
 /** Generic types */
 typedef char                                     _char;
 typedef unsigned char                            _bool;
@@ -57,6 +81,9 @@ typedef enum
   RTCOS_TIMER_PERIODIC       = 0,
   RTCOS_TIMER_ONE_SHOT,
 }rtcos_timer_type_t;
+/**
+  * @}
+  */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Functions                                                                                     */
@@ -88,3 +115,6 @@ rtcos_status_t rtcos_get_message(void **);
 #endif /* __cplusplus */
 
 #endif /* RTCOS_H */
+/**
+  * @}
+  */

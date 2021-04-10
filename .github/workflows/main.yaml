@@ -1,0 +1,34 @@
+name: Renode Automated Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Clone repo with its submodules
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    # Install python
+    - name: Set up Python
+      uses: actions/setup-python@v2
+
+    # Install PlatformIO
+    - name: Set up platformio
+      run: |
+        cd examples/arduino
+        python -m pip install --upgrade pip
+        pip install platformio
+
+    # Buil the firmware
+    - name: Build Firmware
+      run: |
+        cd examples/arduino
+        pio run

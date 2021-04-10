@@ -10,15 +10,27 @@
  **************************************************************************************************
  */
 
+/** @addtogroup rtcos
+  * @{
+  */
 /*-----------------------------------------------------------------------------------------------*/
 /* Includes                                                                                      */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_private_includes Private includes
+  * @{
+  */
 #include "rtcos.h"
 #include "config.h"
+/**
+  * @}
+  */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Private types                                                                                 */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_private_types Private types
+  * @{
+  */
 /** Fifo structure used for storing messages */
 typedef struct
 {
@@ -70,15 +82,27 @@ typedef struct
   rtcos_timer_t tstTimers[RTCOS_MAX_TIMERS_COUNT]; /**< Array of timers                          */
   _u08 u08TimersCount;                           /**< Number of the timers present in the system */
 }rtcos_ctx_t;
+/**
+  * @}
+  */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Private variables                                                                             */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_private_variables Private variables
+  * @{
+  */
 static rtcos_ctx_t stRtcosCtx;
+/**
+  * @}
+  */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Private functions                                                                             */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_private_functions Private functions
+  * @{
+  */
 /** ***********************************************************************************************
   * @brief      Initialize the fifo that will hold a task's messages
   * @param      u08TaskID ID of the task using this fifo
@@ -382,13 +406,18 @@ static rtcos_status_t _rtcos_check_event_input(_u08 u08TaskID, _u32 u32EventFlag
   }
   return eRetVal;
 }
+/**
+  * @}
+  */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Exported functions                                                                            */
 /*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_exported_functions Exported functions
+  * @{
+  */
 /** ***********************************************************************************************
   * @brief      Initialize rtcos main context, this should be called beffore any other os calls
-  * @param      None
   * @return     Nothing
   ********************************************************************************************** */
 void rtcos_init(void)
@@ -504,7 +533,6 @@ rtcos_status_t rtcos_send_message(_u08 u08TaskID, void *pMsg)
 
 /** ***********************************************************************************************
   * @brief      Retrieve a message from inside a task handler
-  * @param      u08TaskID ID of the task which will receive the message
   * @param      ppMsg Pointer on a pointer to retrieved message
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
@@ -580,7 +608,6 @@ rtcos_status_t rtcos_start_timer(_u08 u08TimerID, _u32 u32PeriodInTicks)
 /** ***********************************************************************************************
   * @brief      Start os software timer
   * @param      u08TimerID ID of the timer to stop
-  * @param      u32PeriodInTicks Timer period in ticks
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
 rtcos_status_t rtcos_stop_timer(_u08 u08TimerID)
@@ -694,7 +721,6 @@ void rtcos_set_tick_count(_u32 u32TickCount)
 
 /** ***********************************************************************************************
   * @brief      Get the current tick count that is kept by the system
-  * @param      None
   * @return     Current number of ticks in the system
   ********************************************************************************************** */
 _u32 rtcos_get_tick_count(void)
@@ -724,7 +750,6 @@ void rtcos_delay(_u32 u32DelayTicksCount)
   * @brief      Find the highest priority task with some event.
   *             If found, call the task with the events.
   *             If no events or future events are in the system then the idle handler is called.
-  * @param      None
   * @return     Nothing
   ********************************************************************************************** */
 void rtcos_run(void)
@@ -753,7 +778,6 @@ void rtcos_run(void)
   * @brief      This function should be called every time a tick occurs in the system.
   *             A tick is system dependent and is the measuring point
   *             for the delay of sending events.
-  * @param      None
   * @return     Nothing
   ********************************************************************************************** */
 void rtcos_update_tick(void)
@@ -809,3 +833,10 @@ void rtcos_update_tick(void)
   }
   EXIT_CRITICAL_SECTION();
 }
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
