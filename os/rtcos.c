@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : 
- * @version : 1.0
+ * @version : 2.0
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
