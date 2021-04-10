@@ -1,77 +1,140 @@
+/* 
+ **************************************************************************************************
+ *
+ * @file    : rtcos.c
+ * @author  : 
+ * @version : 1.0
+ * @date    : April 2021
+ * @brief   : RTCOS source file
+ * 
+ **************************************************************************************************
+ * 
+ * @project  : {Generic}
+ * @board    : {Generic}
+ * @target   : {Generic}
+ * @compiler : {Generic}
+ * 
+ **************************************************************************************************
+ *
+ */
+
+/*-----------------------------------------------------------------------------------------------*/
+/* Includes                                                                                      */
+/*-----------------------------------------------------------------------------------------------*/
 #include "rtcos.h"
 
+/*-----------------------------------------------------------------------------------------------*/
+/* Private types                                                                                 */
+/*-----------------------------------------------------------------------------------------------*/
+/** Fifo structure used for storing messages */
 typedef struct
 {
-  _U08 u08Head;
-  _U08 u08Tail;
-  _U08 u08Count;
-  void *tpvBuffer[RTCOS_MAX_MESSAGES_COUNT];
+  _u08 u08Head;                                  /**< Fifo head position                         */
+  _u08 u08Tail;                                  /**< Fifo tail position                         */
+  _u08 u08Count;                                 /**< Fifo current cout                          */
+  void *tpvBuffer[RTCOS_MAX_MESSAGES_COUNT];     /**< Fifo buffer of pointers                    */
 }rtcos_fifo_t;
 
+/** Future event structure representing information about each event */
 typedef struct
 {
-  _U32 u32EventFlags;
-  volatile _U32 u32Timeout;
-  _U32 u32ReloadTimeout;
-  _U08 u08TaskID;
-  volatile _BOOL bInUse;
+  _u32 u32EventFlags;                            /**< 32 bits representing different events      */
+  volatile _u32 u32EventDelay;                   /**< Delay to wait before handling the event    */
+  _u32 u32ReloadDelay;                           /**< Delay to wait before reloading the event   */
+  _u08 u08TaskID;                                /**< ID of the task associated with this event  */
+  volatile _bool bInUse;                         /**< Indicates if the event is still used       */
 }rtcos_future_event_t;
 
+/** Software os timer structure representing information about each timer */
 typedef struct
 {
-  volatile _BOOL bInUse;
-  rtcos_timer_type_t mPeriodType;
-  volatile _U32	u32StartTickCount;
-  _U32 u32TickDelay;
-  pf_timer_cb_t pfTimerCb;
+  volatile _bool bInUse;                         /**< Indicates if the timer is still used       */
+  rtcos_timer_type_t ePeriodType;                /**< Periodic or one shot timer                 */
+  volatile _u32	u32StartTickCount;               /**< Start time of the timer                    */
+  _u32 u32TickDelay;                             /**< Period of the timer                        */
+  pf_timer_cb_t pfTimerCb;                       /**< Timer callback function                    */
 }rtcos_timer_t;
 
+/** Task structure representing information about each task */
 typedef struct
 {
-  volatile _U32 u32EventFlags;
-  pf_task_handler_t pfTaskHandlerCb;
-  _U32 u32TaskParam;
-  rtcos_fifo_t stFifo;
+  volatile _u32 u32EventFlags;                   /**< Event flags associated to this task        */
+  pf_task_handler_t pfTaskHandlerCb;             /**< Task handler function                      */
+  _u32 u32TaskParam;                             /**< Task parameter                             */
+  rtcos_fifo_t stFifo;                           /**< Fifo associated to this task               */
 }rtcos_task_t;
 
+/** Context structure representing the main context of the OS */
 typedef struct
 {
-  _U08 u08TasksCount;
-  _U08 u08CurrentTask;
-  volatile _U32 u32SysTickCount;
-  pf_idle_handler_t pfIdleHandler;
-  volatile _U08 u08FutureEventsCount;
-  rtcos_future_event_t tstFutureEvents[RTCOS_MAX_FUTURE_EVENTS_COUNT];
-  rtcos_task_t tstTasks[RTCOS_MAX_TASKS_COUNT];
-  rtcos_timer_t tstTimers[RTCOS_MAX_TIMERS_COUNT];
-  _U08 u08TimersCount;
+  _u08 u08TasksCount;                            /**< Number of the tasks present in the system  */
+  _u08 u08CurrentTaskID;                         /**< Current task ID                            */
+  volatile _u32 u32SysTicksCount;                 /**< Current number of the system ticks        */
+  pf_idle_handler_t pfIdleHandler;               /**< Handler function when the system is Idle   */
+  volatile _u08 u08FutureEventsCount;            /**< Number of the events present in the system */
+  rtcos_future_event_t tstFutureEvents[RTCOS_MAX_FUTURE_EVENTS_COUNT]; /**< Array of events      */
+  rtcos_task_t tstTasks[RTCOS_MAX_TASKS_COUNT];  /**< Array of tasks                             */
+  rtcos_timer_t tstTimers[RTCOS_MAX_TIMERS_COUNT]; /**< Array of timers                          */
+  _u08 u08TimersCount;                           /**< Number of the timers present in the system */
 }rtcos_ctx_t;
 
+/*-----------------------------------------------------------------------------------------------*/
+/* Private variables                                                                             */
+/*-----------------------------------------------------------------------------------------------*/
 static rtcos_ctx_t stRtcosCtx;
 
-static void _rtcos_fifo_init(_U08 u08TaskID)
+/*-----------------------------------------------------------------------------------------------*/
+/* Private functions                                                                             */
+/*-----------------------------------------------------------------------------------------------*/
+/** ***********************************************************************************************
+  * @brief      Initialize the fifo that will hold a task's messages
+  * @param      u08TaskID ID of the task using this fifo
+  * @return     Nothing
+  ********************************************************************************************** */
+static void _rtcos_fifo_init(_u08 u08TaskID)
 {
   stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Head = 0;
   stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Tail = 0;
   stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count = 0;
 }
 
-static _BOOL _rtcos_fifo_empty(_U08 u08TaskID)
+/** ***********************************************************************************************
+  * @brief      Check if the fifo of a certain task is empty
+  * @param      u08TaskID ID of the task using this fifo
+  * @return     _TRUE if empty, else _FALSE
+  ********************************************************************************************** */
+static _bool _rtcos_fifo_empty(_u08 u08TaskID)
 {
   return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count > 0)?_FALSE:_TRUE;
 }
 
-static _BOOL _rtcos_fifo_full(_U08 u08TaskID)
+/** ***********************************************************************************************
+  * @brief      Check if the fifo of a certain task is full
+  * @param      u08TaskID ID of the task using this fifo
+  * @return     _TRUE if full, else _FALSE
+  ********************************************************************************************** */
+static _bool _rtcos_fifo_full(_u08 u08TaskID)
 {
   return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count >= RTCOS_MAX_MESSAGES_COUNT)?_TRUE:_FALSE;
 }
 
-static _U08 _rtcos_fifo_count(_U08 u08TaskID)
+/** ***********************************************************************************************
+  * @brief      Get the number of items in the fifo
+  * @param      u08TaskID ID of the task using this fifo
+  * @return     Number of items in the fifo
+  ********************************************************************************************** */
+static _u08 _rtcos_fifo_count(_u08 u08TaskID)
 {
   return stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count;
 }
 
-static rtcos_status_t _rtcos_fifo_push(_U08 u08TaskID, void *pvMsg)
+/** ***********************************************************************************************
+  * @brief      Put a message on the fifo of a certain task
+  * @param      u08TaskID ID of the task using this fifo
+  * @param      pvMsg Pointer to the message
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_fifo_push(_u08 u08TaskID, void *pvMsg)
 {
   rtcos_status_t eRetVal;
 
@@ -95,7 +158,13 @@ static rtcos_status_t _rtcos_fifo_push(_U08 u08TaskID, void *pvMsg)
   return eRetVal;
 }
 
-static rtcos_status_t _rtcos_fifo_pop(_U08 u08TaskID, void **ppvMsg)
+/** ***********************************************************************************************
+  * @brief      Retrieve a message of a certain task
+  * @param      u08TaskID ID of the task using this fifo
+  * @param      ppvMsg Pointer to a pointer to the message
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_fifo_pop(_u08 u08TaskID, void **ppvMsg)
 {
   rtcos_status_t eRetVal;
 
@@ -119,10 +188,15 @@ static rtcos_status_t _rtcos_fifo_pop(_U08 u08TaskID, void **ppvMsg)
   return eRetVal;
 }
 
-static _BOOL _rtcos_find_ready_task(_U08 *u08NewCurrTaskID)
+/** ***********************************************************************************************
+  * @brief      Find the highest priority task with an event or a message
+  * @param      pu08NewCurrTaskID This will hold the ID of the found ready task
+  * @return     _TRUE if a task is found, else _FALSE
+  ********************************************************************************************** */
+static _bool _rtcos_find_ready_task(_u08 *pu08NewCurrTaskID)
 {
-  _U08 u08Index;
-  _BOOL bRetVal;
+  _u08 u08Index;
+  _bool bRetVal;
 
   bRetVal = _FALSE;
   for(u08Index = 0; u08Index < stRtcosCtx.u08TasksCount; ++u08Index)
@@ -130,7 +204,7 @@ static _BOOL _rtcos_find_ready_task(_U08 *u08NewCurrTaskID)
     if((0 != stRtcosCtx.tstTasks[u08Index].u32EventFlags) ||
        (_FALSE == _rtcos_fifo_empty(u08Index)))
     {
-      *u08NewCurrTaskID = u08Index;
+      *pu08NewCurrTaskID = u08Index;
       bRetVal = _TRUE;
       break;
     }
@@ -138,31 +212,42 @@ static _BOOL _rtcos_find_ready_task(_U08 *u08NewCurrTaskID)
   return bRetVal;
 }
 
-static void _rtcos_run_ready_task(_U08 u08NewCurrTaskID)
+/** ***********************************************************************************************
+  * @brief      Run the task that has the highest priority and is ready
+  * @param      u08NewCurrTaskID ID of the task to run
+  * @return     Nothing
+  ********************************************************************************************** */
+static void _rtcos_run_ready_task(_u08 u08NewCurrTaskID)
 {
-  _U32 u32UnhandledEvents;
-  _U32 u32CurrentEvents;
+  _u32 u32UnhandledEvents;
+  _u32 u32CurrentEvents;
 
   ENTER_CRITICAL_SECTION();
-  stRtcosCtx.u08CurrentTask = u08NewCurrTaskID;
-  u32CurrentEvents = stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32EventFlags;
-  stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32EventFlags = 0;  
+  stRtcosCtx.u08CurrentTaskID = u08NewCurrTaskID;
+  u32CurrentEvents = stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags;
+  stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags = 0;  
   EXIT_CRITICAL_SECTION();
-
-  u32UnhandledEvents = (stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].pfTaskHandlerCb)
+  u32UnhandledEvents = (stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].pfTaskHandlerCb)
                        (u32CurrentEvents,
-                        _rtcos_fifo_count(stRtcosCtx.u08CurrentTask),
-                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32TaskParam);
+                        _rtcos_fifo_count(stRtcosCtx.u08CurrentTaskID),
+                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32TaskParam);
   ENTER_CRITICAL_SECTION();
-  stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTask].u32EventFlags |= u32UnhandledEvents;
+  stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags |= u32UnhandledEvents;
   EXIT_CRITICAL_SECTION();
 }
 
-static rtcos_status_t _rtcos_find_future_event(_U08 u08TaskID,
-                                               _U32 u32EventFlags,
-                                               _U08 *pu08FoundEventIdx)
+/** ***********************************************************************************************
+  * @brief      Search for a used event that has the requested task ID and event flag
+  * @param      u08TaskID ID of the task using this fifo
+  * @param      u32EventFlags Bit feild event
+  * @param      pu08FoundEventIdx This will hold the index the event if found
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_find_future_event(_u08 u08TaskID,
+                                               _u32 u32EventFlags,
+                                               _u08 *pu08FoundEventIdx)
 {
-  _U08 u08Index;
+  _u08 u08Index;
   rtcos_status_t eRetVal;
 
   eRetVal = RTCOS_ERR_NOT_FOUND;
@@ -180,10 +265,16 @@ static rtcos_status_t _rtcos_find_future_event(_U08 u08TaskID,
   return eRetVal;
 }
 
-static rtcos_status_t _rtcos_delete_future_event(_U08 u08TaskID, _U32 u32EventFlags)
+/** ***********************************************************************************************
+  * @brief      Search for a used event that has the requested task ID and event flag and delete it
+  * @param      u08TaskID ID of the task using this fifo
+  * @param      u32EventFlags Bit feild event
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_delete_future_event(_u08 u08TaskID, _u32 u32EventFlags)
 {
   rtcos_status_t eRetVal;
-  _U08 u08FoundEventIdx;
+  _u08 u08FoundEventIdx;
 
   eRetVal = _rtcos_find_future_event(u08TaskID, u32EventFlags, &u08FoundEventIdx);
   if(RTCOS_ERR_NONE == eRetVal)
@@ -197,9 +288,14 @@ static rtcos_status_t _rtcos_delete_future_event(_U08 u08TaskID, _U32 u32EventFl
   return eRetVal;
 }
 
-static rtcos_status_t _rtcos_find_empty_future_event_index(_U08 *pu08FoundEventIdx)
+/** ***********************************************************************************************
+  * @brief      Search for an unused event
+  * @param      pu08FoundEventIdx ID of the the found unused event
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_find_empty_future_event_index(_u08 *pu08FoundEventIdx)
 {
-  _U08 u08Index;
+  _u08 u08Index;
   rtcos_status_t eRetVal;
 
   eRetVal = RTCOS_ERR_NOT_FOUND;
@@ -215,19 +311,29 @@ static rtcos_status_t _rtcos_find_empty_future_event_index(_U08 *pu08FoundEventI
   return eRetVal;
 }
 
-static rtcos_status_t _rtcos_add_future_event(_U08 u08TaskID,
-                                              _U32 u32EventFlags,
-                                              _U32 u32EventDelay,
-                                              _BOOL bPeriodicEvent)
+/** ***********************************************************************************************
+  * @brief      Schedule a future event if there is space in the future event
+  *             array. First look if there is already a future event
+  *             in the array, if not find an empty spot.
+  * @param      u08TaskID ID of the task using this event
+  * @param      u32EventFlags Bit feild event
+  * @param      u32EventDelay How long to wait before sending event, if 0 send immediately
+  * @param      bPeriodicEvent Indicates whether to send this event periodically or not
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_add_future_event(_u08 u08TaskID,
+                                              _u32 u32EventFlags,
+                                              _u32 u32EventDelay,
+                                              _bool bPeriodicEvent)
 {
-  _U08 u08FoundEventIdx;
+  _u08 u08FoundEventIdx;
   rtcos_status_t eRetVal;
 
   ENTER_CRITICAL_SECTION();
   eRetVal = _rtcos_find_future_event(u08TaskID, u32EventFlags, &u08FoundEventIdx);
   if(RTCOS_ERR_NONE == eRetVal)
   {
-    stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32Timeout = u32EventDelay;
+    stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32EventDelay = u32EventDelay;
   }
   else
   {
@@ -235,30 +341,41 @@ static rtcos_status_t _rtcos_add_future_event(_U08 u08TaskID,
     if(RTCOS_ERR_NONE == eRetVal)
     {
       stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = _TRUE;
-      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32Timeout = u32EventDelay;
+      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32EventDelay = u32EventDelay;
       stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u08TaskID = u08TaskID;
       stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32EventFlags = u32EventFlags;
       ++stRtcosCtx.u08FutureEventsCount;
       if(_TRUE == bPeriodicEvent)
       {   
-        stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadTimeout = u32EventDelay;
+        stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadDelay = u32EventDelay;
       }
       else
       {
-        stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadTimeout = 0;
+        stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadDelay = 0;
       }
     }
   }
   EXIT_CRITICAL_SECTION();
   return eRetVal;
 }
- 
-static rtcos_status_t _rtcos_count_events(_U32 u32EventFlags)
+
+/** ***********************************************************************************************
+  * @brief      Find if there are any set events
+  * @param      u32EventFlags Bit feild event
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_count_events(_u32 u32EventFlags)
 {
   return (u32EventFlags)?RTCOS_ERR_NONE:RTCOS_ERR_NO_EVENT;
 }
 
-static rtcos_status_t _rtcos_check_event_input(_U08 u08TaskID, _U32 u32EventFlags)
+/** ***********************************************************************************************
+  * @brief      Check the inputs to the event routines
+  * @param      u08TaskID ID of the task using this event
+  * @param      u32EventFlags Bit feild event
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+static rtcos_status_t _rtcos_check_event_input(_u08 u08TaskID, _u32 u32EventFlags)
 {
   rtcos_status_t eRetVal;
 
@@ -273,9 +390,17 @@ static rtcos_status_t _rtcos_check_event_input(_U08 u08TaskID, _U32 u32EventFlag
   return eRetVal;
 }
 
+/*-----------------------------------------------------------------------------------------------*/
+/* Exported functions                                                                            */
+/*-----------------------------------------------------------------------------------------------*/
+/** ***********************************************************************************************
+  * @brief      Initialize rtcos main context, this should be called beffore any other os calls
+  * @param      None
+  * @return     Nothing
+  ********************************************************************************************** */
 void rtcos_init(void)
 {
-  _U08 u08Index;
+  _u08 u08Index;
 
   for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
   {
@@ -288,8 +413,8 @@ void rtcos_init(void)
     stRtcosCtx.tstFutureEvents[u08Index].bInUse = _FALSE;
     stRtcosCtx.tstFutureEvents[u08Index].u08TaskID = 0;
     stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags = 0;
-    stRtcosCtx.tstFutureEvents[u08Index].u32Timeout = 0;
-    stRtcosCtx.tstFutureEvents[u08Index].u32ReloadTimeout = 0;
+    stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay = 0;
+    stRtcosCtx.tstFutureEvents[u08Index].u32ReloadDelay = 0;
   }
   for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
   {
@@ -298,17 +423,24 @@ void rtcos_init(void)
     stRtcosCtx.tstTimers[u08Index].bInUse = _FALSE;
     stRtcosCtx.tstTimers[u08Index].pfTimerCb = _NIL;
   }
-  stRtcosCtx.u08CurrentTask = 0;
-  stRtcosCtx.u32SysTickCount = 0;
+  stRtcosCtx.u08CurrentTaskID = 0;
+  stRtcosCtx.u32SysTicksCount = 0;
   stRtcosCtx.u08TasksCount = 0;
   stRtcosCtx.u08FutureEventsCount = 0;
   stRtcosCtx.pfIdleHandler = _NIL;
   stRtcosCtx.u08TimersCount = 0;
 }
 
+/** ***********************************************************************************************
+  * @brief      Register a task handler if there is space
+  * @param      pfTaskHandler task handler function
+  * @param      u08TaskID ID of this task
+  * @param      u32TaskParam Task parameter
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
 rtcos_status_t rtcos_register_task_handler(pf_task_handler_t pfTaskHandler,
-                                           _U08 u08TaskID,
-                                           _U32 u32TaskParam)
+                                           _u08 u08TaskID,
+                                           _u32 u32TaskParam)
 {
   rtcos_status_t eRetVal;
 
@@ -333,6 +465,11 @@ rtcos_status_t rtcos_register_task_handler(pf_task_handler_t pfTaskHandler,
   return eRetVal;
 }
 
+/** ***********************************************************************************************
+  * @brief      Register an idle handler to be called when the system is idle
+  * @param      pfIdleHandler idle handler function
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
 rtcos_status_t rtcos_register_idle_handler(pf_idle_handler_t pfIdleHandler)
 {
   rtcos_status_t eRetVal;
@@ -349,7 +486,13 @@ rtcos_status_t rtcos_register_idle_handler(pf_idle_handler_t pfIdleHandler)
   return eRetVal;
 }
 
-rtcos_status_t rtcos_send_message(_U08 u08TaskID, void *pMsg)
+/** ***********************************************************************************************
+  * @brief      Send a message to a task
+  * @param      u08TaskID ID of the task which will receive the message
+  * @param      pMsg Pointer on the message to send
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_send_message(_u08 u08TaskID, void *pMsg)
 {
   rtcos_status_t eRetVal;
 
@@ -366,14 +509,20 @@ rtcos_status_t rtcos_send_message(_U08 u08TaskID, void *pMsg)
   return eRetVal;
 }
 
-rtcos_status_t rtcos_get_message(void * *pMsg)
+/** ***********************************************************************************************
+  * @brief      Retrieve a message from inside a task handler
+  * @param      u08TaskID ID of the task which will receive the message
+  * @param      ppMsg Pointer on a pointer to retrieved message
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_get_message(void **ppMsg)
 {
   rtcos_status_t eRetVal;
 
-  if(stRtcosCtx.u08CurrentTask < stRtcosCtx.u08TasksCount)
+  if(stRtcosCtx.u08CurrentTaskID < stRtcosCtx.u08TasksCount)
   {
     ENTER_CRITICAL_SECTION();
-    eRetVal = _rtcos_fifo_pop(stRtcosCtx.u08CurrentTask, pMsg);
+    eRetVal = _rtcos_fifo_pop(stRtcosCtx.u08CurrentTaskID, ppMsg);
     EXIT_CRITICAL_SECTION();
   }
   else
@@ -383,9 +532,16 @@ rtcos_status_t rtcos_get_message(void * *pMsg)
   return eRetVal;
 }
 
-_U08 rtcos_create_timer(rtcos_timer_type_t periodType, pf_timer_cb_t pfTimerCb, void *pvArg)
+/** ***********************************************************************************************
+  * @brief      Create an os software timer
+  * @param      ePeriodType timer type as defined in ::rtcos_timer_type_t
+  * @param      pfTimerCb Timer callback function
+  * @param      pvArg Additional argument passed to the timer callback
+  * @return     ID of the created timer or error
+  ********************************************************************************************** */
+_u08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_timer_cb_t pfTimerCb, void *pvArg)
 {
-  _U08 eRetVal;
+  _u08 eRetVal;
 
   ENTER_CRITICAL_SECTION();
   if(stRtcosCtx.u08TimersCount >= RTCOS_MAX_TIMERS_COUNT)
@@ -394,7 +550,7 @@ _U08 rtcos_create_timer(rtcos_timer_type_t periodType, pf_timer_cb_t pfTimerCb, 
   }
   else
   {
-    stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].mPeriodType = periodType;
+    stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].ePeriodType = ePeriodType;
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pfTimerCb = pfTimerCb;
     eRetVal = stRtcosCtx.u08TimersCount++;
   }
@@ -402,7 +558,13 @@ _U08 rtcos_create_timer(rtcos_timer_type_t periodType, pf_timer_cb_t pfTimerCb, 
   return eRetVal;
 }
 
-rtcos_status_t rtcos_start_timer(_U08 u08TimerID, _U32 u32PeriodInTicks)
+/** ***********************************************************************************************
+  * @brief      Start os software timer
+  * @param      u08TimerID ID of the timer to start
+  * @param      u32PeriodInTicks Timer period in ticks
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_start_timer(_u08 u08TimerID, _u32 u32PeriodInTicks)
 {
   rtcos_status_t eRetVal;
 
@@ -414,7 +576,7 @@ rtcos_status_t rtcos_start_timer(_U08 u08TimerID, _U32 u32PeriodInTicks)
   else
   {
     stRtcosCtx.tstTimers[u08TimerID].u32TickDelay = u32PeriodInTicks;
-    stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount = stRtcosCtx.u32SysTickCount;
+    stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount = stRtcosCtx.u32SysTicksCount;
     stRtcosCtx.tstTimers[u08TimerID].bInUse = _TRUE;
     eRetVal = RTCOS_ERR_NONE;
   }
@@ -422,7 +584,13 @@ rtcos_status_t rtcos_start_timer(_U08 u08TimerID, _U32 u32PeriodInTicks)
   return eRetVal;
 }
 
-rtcos_status_t rtcos_stop_timer(_U08 u08TimerID)
+/** ***********************************************************************************************
+  * @brief      Start os software timer
+  * @param      u08TimerID ID of the timer to stop
+  * @param      u32PeriodInTicks Timer period in ticks
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_stop_timer(_u08 u08TimerID)
 {
   rtcos_status_t eRetVal;
 
@@ -440,17 +608,22 @@ rtcos_status_t rtcos_stop_timer(_U08 u08TimerID)
   return eRetVal;
 }
 
-_BOOL rtcos_timer_expired(_U08 u08TimerID)
+/** ***********************************************************************************************
+  * @brief      Check if the os software timer has expired
+  * @param      u08TimerID ID of the timer to check
+  * @return     _TRUE if timer has expired, else _FALSE
+  ********************************************************************************************** */
+_bool rtcos_timer_expired(_u08 u08TimerID)
 {
-  _U32 u32CurrentTickCount;
-  _BOOL bExpired;
+  _u32 u32CurrentTicksCount;
+  _bool bExpired;
 
   bExpired = _FALSE;
-  u32CurrentTickCount = stRtcosCtx.u32SysTickCount;
+  u32CurrentTicksCount = stRtcosCtx.u32SysTicksCount;
   ENTER_CRITICAL_SECTION();
   if((stRtcosCtx.tstTimers[u08TimerID].bInUse) && (u08TimerID < RTCOS_MAX_TIMERS_COUNT))
   {
-    if((u32CurrentTickCount - stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount) >
+    if((u32CurrentTicksCount - stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount) >
        (stRtcosCtx.tstTimers[u08TimerID].u32TickDelay))
     {
       bExpired = _TRUE;
@@ -460,10 +633,18 @@ _BOOL rtcos_timer_expired(_U08 u08TimerID)
   return bExpired;
 }
 
-rtcos_status_t rtcos_send_event(_U08 u08TaskID,
-                                _U32 u32EventFlags,
-                                _U32 u32EventDelay,
-                                _BOOL bPeriodicEvent)
+/** ***********************************************************************************************
+  * @brief      Set an event for a certain task
+  * @param      u08TaskID ID of the task which will receive the event
+  * @param      u32EventFlags Bit feild event
+  * @param      u32EventDelay How long to wait before sending event, if 0 send immediately
+  * @param      bPeriodicEvent Indicates whether to send this event periodically or not
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_send_event(_u08 u08TaskID,
+                                _u32 u32EventFlags,
+                                _u32 u32EventDelay,
+                                _bool bPeriodicEvent)
 {
   rtcos_status_t eRetVal;
 
@@ -484,7 +665,15 @@ rtcos_status_t rtcos_send_event(_U08 u08TaskID,
   return eRetVal;
 }
 
-rtcos_status_t rtcos_clear_event(_U08 u08TaskID, _U32 u32EventFlags)
+/** ***********************************************************************************************
+  * @brief      Clear an event for a certain task, the event might be in
+  *             the current event flags or in a future event.
+  *             This will clear them in both places.
+  * @param      u08TaskID ID of the task using the event
+  * @param      u32EventFlags Bit feild event
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_clear_event(_u08 u08TaskID, _u32 u32EventFlags)
 {
   rtcos_status_t eRetVal;
 
@@ -499,33 +688,56 @@ rtcos_status_t rtcos_clear_event(_U08 u08TaskID, _U32 u32EventFlags)
   return eRetVal;
 }
 
-void rtcos_set_tick_count(_U32 u32TickCount)
+/** ***********************************************************************************************
+  * @brief      Set the current tick count that is kept by the system.
+  *             This can be used for testing purposes to check for an overflow.
+  * @param      u32TickCount Number of ticks to set
+  * @return     Nothing
+  ********************************************************************************************** */
+void rtcos_set_tick_count(_u32 u32TickCount)
 {
-  stRtcosCtx.u32SysTickCount = u32TickCount;
+  stRtcosCtx.u32SysTicksCount = u32TickCount;
 }
 
-_U32 rtcos_get_tick_count(void)
+/** ***********************************************************************************************
+  * @brief      Get the current tick count that is kept by the system
+  * @param      None
+  * @return     Current number of ticks in the system
+  ********************************************************************************************** */
+_u32 rtcos_get_tick_count(void)
 {
-  _U32 u32CurrTickCount;
+  _u32 u32CurrTickCount;
 
   ENTER_CRITICAL_SECTION();
-  u32CurrTickCount = stRtcosCtx.u32SysTickCount;
+  u32CurrTickCount = stRtcosCtx.u32SysTicksCount;
   EXIT_CRITICAL_SECTION();
   return u32CurrTickCount;
 }
 
-void rtcos_delay(_U32 u32DelayTicksCount)
+/** ***********************************************************************************************
+  * @brief      Blocking delay
+  * @param      u32DelayTicksCount Number of ticks to wait before unblocking
+  * @return     Nothing
+  ********************************************************************************************** */
+void rtcos_delay(_u32 u32DelayTicksCount)
 {
-  _U32 u32Tick;
+  _u32 u32Tick;
 
   u32Tick = rtcos_get_tick_count();
   while((rtcos_get_tick_count() - u32Tick) != u32DelayTicksCount);
 }
 
+/** ***********************************************************************************************
+  * @brief      Find the highest priority task with some event.
+  *             If found, call the task with the events.
+  *             If no events or future events are in the system then the idle handler is called.
+  * @param      None
+  * @return     Nothing
+  ********************************************************************************************** */
 void rtcos_run(void)
 {
-  _BOOL bFoundReadyTask;
-  _U08 u08NewCurrTaskID;
+  _bool bFoundReadyTask;
+  _u08 u08NewCurrTaskID;
 
   while(1)
   {
@@ -544,18 +756,25 @@ void rtcos_run(void)
   }
 }
 
+/** ***********************************************************************************************
+  * @brief      This function should be called every time a tick occurs in the system.
+  *             A tick is system dependent and is the measuring point
+  *             for the delay of sending events.
+  * @param      None
+  * @return     Nothing
+  ********************************************************************************************** */
 void rtcos_update_tick(void)
 {
-  _U08 u08Index;
+  _u08 u08Index;
   
   ENTER_CRITICAL_SECTION();
-  ++stRtcosCtx.u32SysTickCount;
+  ++stRtcosCtx.u32SysTicksCount;
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
     if(_TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
     {
-      --stRtcosCtx.tstFutureEvents[u08Index].u32Timeout; 
-      if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32Timeout)
+      --stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay; 
+      if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay)
       {
         if(stRtcosCtx.u08FutureEventsCount > 0)
         {
@@ -564,14 +783,15 @@ void rtcos_update_tick(void)
         stRtcosCtx
           .tstTasks[stRtcosCtx.tstFutureEvents[u08Index].u08TaskID]
             .u32EventFlags |= stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags;
-        if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32ReloadTimeout)
+        if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32ReloadDelay)
         {
           stRtcosCtx.tstFutureEvents[u08Index].bInUse = _FALSE;
         }
         else
         {
-          stRtcosCtx.tstFutureEvents[u08Index].u32Timeout =
-          stRtcosCtx.tstFutureEvents[u08Index].u32ReloadTimeout;
+          stRtcosCtx
+            .tstFutureEvents[u08Index]
+              .u32EventDelay = stRtcosCtx.tstFutureEvents[u08Index].u32ReloadDelay;
         }
       }
     }
@@ -586,11 +806,11 @@ void rtcos_update_tick(void)
         {
           stRtcosCtx.tstTimers[u08Index].pfTimerCb(0);
         }
-        if(RTCOS_TIMER_ONE_SHOT == stRtcosCtx.tstTimers[u08Index].mPeriodType)
+        if(RTCOS_TIMER_ONE_SHOT == stRtcosCtx.tstTimers[u08Index].ePeriodType)
         {
           stRtcosCtx.tstTimers[u08Index].bInUse = _FALSE;
         }
-        stRtcosCtx.tstTimers[u08Index].u32StartTickCount = stRtcosCtx.u32SysTickCount;
+        stRtcosCtx.tstTimers[u08Index].u32StartTickCount = stRtcosCtx.u32SysTicksCount;
       }
     }
   }
