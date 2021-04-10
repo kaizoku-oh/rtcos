@@ -9,6 +9,6 @@ is an event-driven RTC (Run To Completion) scheduler dedicated to ultra constrai
 
 RTC OS is written in pure C and doesn't need any thirdparty library or dependency to work.
 
-Being hardware agnostic, RTC OS can work on any hardware platform that can provide a hardware timer tick.
+Being hardware agnostic, RTC OS can work on any hardware platform that can provide a hardware timer tick and optionally an interface to enter and exit critical section.
 
 ![Twitter follow](https://img.shields.io/twitter/follow/kaizoku_ouh?style=social)
