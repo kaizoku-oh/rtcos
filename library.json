@@ -1,6 +1,6 @@
 {
   "name": "RTC OS",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An event-driven RTC (Run To Completion) OS/scheduler dedicated to ultra constrained devices.",
   "keywords": "cooperative, event, scheduler, os",
   "repository":
@@ -13,7 +13,7 @@
     {
       "name": "Bayrem GHARSELLAOUI",
       "email": "garssallaoui.bayrem@gmail.com",
-      "url": "bayrem.me"
+      "url": "http://bayrem.me"
     }
   ],
   "license": "MIT",
