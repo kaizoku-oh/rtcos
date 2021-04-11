@@ -3,7 +3,7 @@
  *
  * @file    : config.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.0
+ * @version : 1.1.0
  * @date    : April 2021
  * @brief   : RTCOS default configuration file
  * 
