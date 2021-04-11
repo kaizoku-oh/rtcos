@@ -3,7 +3,7 @@
  *
  * @file    : main.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.1.0
+ * @version : 1.1.1
  * @date    : April 2021
  * @brief   : Linux example program
  * 

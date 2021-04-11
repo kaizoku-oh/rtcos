@@ -3,7 +3,7 @@
  *
  * @file    : RTCOSConfig.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.1.0
+ * @version : 1.1.1
  * @date    : April 2021
  * @brief   : RTCOS user configuration example used to overrite os default configuration
  * 
@@ -29,7 +29,7 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Macros                                                                                        */
 /*-----------------------------------------------------------------------------------------------*/
-#define ENTER_CRITICAL_SECTION()                 noInterrupts();
-#define EXIT_CRITICAL_SECTION()                  interrupts();
+#define RTCOS_ENTER_CRITICAL_SECTION()           noInterrupts();
+#define RTCOS_EXIT_CRITICAL_SECTION()            interrupts();
 
 #endif /* RTCOS_CONFIG_H */
