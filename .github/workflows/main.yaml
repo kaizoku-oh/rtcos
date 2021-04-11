@@ -2,9 +2,11 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - '*'
   pull_request:
-    branches: [ main ]
+    branches:
+      - '*'
 
 jobs:
   build:
@@ -32,6 +34,12 @@ jobs:
       run: |
         cd examples/arduino
         pio run
+
+    # Check the firmware
+    - name: Check Firmware
+      run: |
+        cd examples/arduino
+        pio check
 
     # Generate doxygene documentation
     - name: Generate documentation

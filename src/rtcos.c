@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.1.0
+ * @version : 1.1.1
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -239,18 +239,18 @@ static void _rtcos_run_ready_task(_u08 u08NewCurrTaskID)
   _u32 u32UnhandledEvents;
   _u32 u32CurrentEvents;
 
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   stRtcosCtx.u08CurrentTaskID = u08NewCurrTaskID;
   u32CurrentEvents = stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags;
   stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags = 0;  
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   u32UnhandledEvents = (stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].pfTaskHandlerCb)
                        (u32CurrentEvents,
                         _rtcos_fifo_count(stRtcosCtx.u08CurrentTaskID),
                         stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32TaskParam);
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags |= u32UnhandledEvents;
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
 }
 
 /** ***********************************************************************************************
@@ -346,7 +346,7 @@ static rtcos_status_t _rtcos_add_future_event(_u08 u08TaskID,
   _u08 u08FoundEventIdx;
   rtcos_status_t eRetVal;
 
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   eRetVal = _rtcos_find_future_event(u08TaskID, u32EventFlags, &u08FoundEventIdx);
   if(RTCOS_ERR_NONE == eRetVal)
   {
@@ -372,7 +372,7 @@ static rtcos_status_t _rtcos_add_future_event(_u08 u08TaskID,
       }
     }
   }
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   return eRetVal;
 }
 
@@ -520,9 +520,9 @@ rtcos_status_t rtcos_send_message(_u08 u08TaskID, void *pMsg)
 
   if(u08TaskID < stRtcosCtx.u08TasksCount)
   {
-    ENTER_CRITICAL_SECTION();
+    RTCOS_ENTER_CRITICAL_SECTION();
     eRetVal = _rtcos_fifo_push(u08TaskID, pMsg);
-    EXIT_CRITICAL_SECTION();
+    RTCOS_EXIT_CRITICAL_SECTION();
   }
   else
   {
@@ -542,9 +542,9 @@ rtcos_status_t rtcos_get_message(void **ppMsg)
 
   if(stRtcosCtx.u08CurrentTaskID < stRtcosCtx.u08TasksCount)
   {
-    ENTER_CRITICAL_SECTION();
+    RTCOS_ENTER_CRITICAL_SECTION();
     eRetVal = _rtcos_fifo_pop(stRtcosCtx.u08CurrentTaskID, ppMsg);
-    EXIT_CRITICAL_SECTION();
+    RTCOS_EXIT_CRITICAL_SECTION();
   }
   else
   {
@@ -564,7 +564,7 @@ _s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_timer_cb_t pfTimerCb,
 {
   _s08 s08RetVal;
 
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   if(stRtcosCtx.u08TimersCount >= RTCOS_MAX_TIMERS_COUNT)
   {
     s08RetVal = RTCOS_ERR_OUT_OF_RESOURCES;
@@ -575,7 +575,7 @@ _s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_timer_cb_t pfTimerCb,
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pfTimerCb = pfTimerCb;
     s08RetVal = stRtcosCtx.u08TimersCount++;
   }
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   return s08RetVal;
 }
 
@@ -589,7 +589,7 @@ rtcos_status_t rtcos_start_timer(_u08 u08TimerID, _u32 u32PeriodInTicks)
 {
   rtcos_status_t eRetVal;
 
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   if(u08TimerID >= RTCOS_MAX_TIMERS_COUNT)
   {
     eRetVal = RTCOS_ERR_OUT_OF_RESOURCES;
@@ -601,7 +601,7 @@ rtcos_status_t rtcos_start_timer(_u08 u08TimerID, _u32 u32PeriodInTicks)
     stRtcosCtx.tstTimers[u08TimerID].bInUse = TRUE;
     eRetVal = RTCOS_ERR_NONE;
   }
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   return eRetVal;
 }
 
@@ -614,7 +614,7 @@ rtcos_status_t rtcos_stop_timer(_u08 u08TimerID)
 {
   rtcos_status_t eRetVal;
 
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   if(u08TimerID >= RTCOS_MAX_TIMERS_COUNT)
   {
     eRetVal = RTCOS_ERR_OUT_OF_RESOURCES;
@@ -624,7 +624,7 @@ rtcos_status_t rtcos_stop_timer(_u08 u08TimerID)
     stRtcosCtx.tstTimers[u08TimerID].bInUse = FALSE;
     eRetVal = RTCOS_ERR_NONE;
   }
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   return eRetVal;
 }
 
@@ -640,7 +640,7 @@ _bool rtcos_timer_expired(_u08 u08TimerID)
 
   bExpired = FALSE;
   u32CurrentTicksCount = stRtcosCtx.u32SysTicksCount;
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   if((stRtcosCtx.tstTimers[u08TimerID].bInUse) && (u08TimerID < RTCOS_MAX_TIMERS_COUNT))
   {
     if((u32CurrentTicksCount - stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount) >
@@ -649,7 +649,7 @@ _bool rtcos_timer_expired(_u08 u08TimerID)
       bExpired = TRUE;
     }
   }
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   return bExpired;
 }
 
@@ -673,9 +673,9 @@ rtcos_status_t rtcos_send_event(_u08 u08TaskID,
   {
     if(0 == u32EventDelay)
     {
-      ENTER_CRITICAL_SECTION();
+      RTCOS_ENTER_CRITICAL_SECTION();
       stRtcosCtx.tstTasks[u08TaskID].u32EventFlags |= u32EventFlags;
-      EXIT_CRITICAL_SECTION();
+      RTCOS_EXIT_CRITICAL_SECTION();
     }
     else
     {
@@ -700,10 +700,10 @@ rtcos_status_t rtcos_clear_event(_u08 u08TaskID, _u32 u32EventFlags)
   eRetVal = _rtcos_check_event_input(u08TaskID, u32EventFlags);
   if(RTCOS_ERR_NONE == eRetVal)
   {
-    ENTER_CRITICAL_SECTION();
+    RTCOS_ENTER_CRITICAL_SECTION();
     stRtcosCtx.tstTasks[u08TaskID].u32EventFlags &= ~(u32EventFlags);
     _rtcos_delete_future_event(u08TaskID, u32EventFlags); 
-    EXIT_CRITICAL_SECTION();
+    RTCOS_EXIT_CRITICAL_SECTION();
   }
   return eRetVal;
 }
@@ -727,9 +727,9 @@ _u32 rtcos_get_tick_count(void)
 {
   _u32 u32CurrTickCount;
 
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   u32CurrTickCount = stRtcosCtx.u32SysTicksCount;
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
   return u32CurrTickCount;
 }
 
@@ -759,9 +759,9 @@ void rtcos_run(void)
 
   while(1)
   {
-    ENTER_CRITICAL_SECTION();
+    RTCOS_ENTER_CRITICAL_SECTION();
     bFoundReadyTask = _rtcos_find_ready_task(&u08NewCurrTaskID);
-    EXIT_CRITICAL_SECTION();
+    RTCOS_EXIT_CRITICAL_SECTION();
     if(TRUE == bFoundReadyTask)
     {
       _rtcos_run_ready_task(u08NewCurrTaskID);
@@ -784,7 +784,7 @@ void rtcos_update_tick(void)
 {
   _u08 u08Index;
   
-  ENTER_CRITICAL_SECTION();
+  RTCOS_ENTER_CRITICAL_SECTION();
   ++stRtcosCtx.u32SysTicksCount;
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
@@ -831,7 +831,7 @@ void rtcos_update_tick(void)
       }
     }
   }
-  EXIT_CRITICAL_SECTION();
+  RTCOS_EXIT_CRITICAL_SECTION();
 }
 /**
   * @}
