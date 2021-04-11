@@ -3,7 +3,7 @@
  *
  * @file    : main.cpp
  * @author  : Bayrem GHARSELLAOUI
- * @version : 2.0
+ * @version : 1.1.0
  * @date    : April 2021
  * @brief   : Arduino example sketch
  * 
