@@ -1,6 +1,6 @@
 {
   "name": "RTCOS",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "An event-driven RTC (Run To Completion) OS/scheduler dedicated to ultra constrained devices.",
   "keywords": "cooperative, event, scheduler, os",
   "repository":
