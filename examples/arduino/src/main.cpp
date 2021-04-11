@@ -1,22 +1,50 @@
+/* 
+ **************************************************************************************************
+ *
+ * @file    : main.cpp
+ * @author  : Bayrem GHARSELLAOUI
+ * @version : 2.0
+ * @date    : April 2021
+ * @brief   : Arduino example sketch
+ * 
+ **************************************************************************************************
+ */
+
+/*-----------------------------------------------------------------------------------------------*/
+/* Includes                                                                                      */
+/*-----------------------------------------------------------------------------------------------*/
 #include <Arduino.h>
 #include <TimerOne.h>
-#include "rtcos.h"
+#include <rtcos.h>
 
+/*-----------------------------------------------------------------------------------------------*/
+/* Defines                                                                                       */
+/*-----------------------------------------------------------------------------------------------*/
 #define TASK_ID_PRIORITY_ONE                     (_u08)0
 #define TASK_ID_PRIORITY_TWO                     (_u08)1
 #define EVENT_PING                               (_u32)1
 #define EVENT_PONG                               (_u32)2
 
-void _timer_isr(void);
-_u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
-_u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
-void _on_os_timer_expired(void const *);
+/*-----------------------------------------------------------------------------------------------*/
+/* Private function prototypes                                                                   */
+/*-----------------------------------------------------------------------------------------------*/
+static void _timer_isr(void);
+static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
+static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
+static void _on_os_timer_expired(void const *);
 
-_u08 u08LedState = LOW;
+/*-----------------------------------------------------------------------------------------------*/
+/* Private variables                                                                             */
+/*-----------------------------------------------------------------------------------------------*/
+static _u08 u08LedState = LOW;
 
+/** ***********************************************************************************************
+  * @brief      Runs once to setup hardware and os
+  * @return     Returns nothing
+  ********************************************************************************************** */
 void setup()
 {
-  _u08 u08TimerID;
+  _u08 u08OsTimerID;
 
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(9600);
@@ -26,29 +54,49 @@ void setup()
   rtcos_init();
   rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (_u32)0);
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (_u32)0);
-  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, _FALSE);
+  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, FALSE);
   rtcos_send_message(TASK_ID_PRIORITY_TWO, (void *)"Hello");
-  u08TimerID = rtcos_create_timer(RTCOS_TIMER_PERIODIC, _on_os_timer_expired, 0);
-  rtcos_start_timer(u08TimerID, 100);
+  u08OsTimerID = rtcos_create_timer(RTCOS_TIMER_PERIODIC, _on_os_timer_expired, 0);
+  rtcos_start_timer(u08OsTimerID, 100);
 
   rtcos_run();
 }
 
+/** ***********************************************************************************************
+  * @brief      Runs repeadetly, not used here
+  * @return     Returns nothing
+  ********************************************************************************************** */
 void loop()
 {}
 
-void _timer_isr(void)
+/** ***********************************************************************************************
+  * @brief      Arduino hardware timer ISR, used here to increment the os tick
+  * @return     Returns nothing
+  ********************************************************************************************** */
+static void _timer_isr(void)
 {
   rtcos_update_tick();
 }
 
-void _on_os_timer_expired(void const *pvArg)
+/** ***********************************************************************************************
+  * @brief      OS software timer callback
+  * @param      pvArg Additional argument passed to the timer callback
+  * @return     Returns nothing
+  ********************************************************************************************** */
+static void _on_os_timer_expired(void const *pvArg)
 {
   u08LedState = !u08LedState;
   digitalWrite(LED_BUILTIN, u08LedState); 
 }
 
-_u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
+/** ***********************************************************************************************
+  * @brief      Task handler function
+  * @param      u32EventFlags Bit feild event
+  * @param      u08MsgCount number of messages belonging to this task
+  * @param      u32Param Task parameter
+  * @return     Return unhandled events
+  ********************************************************************************************** */
+static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
 {
   _u32 u32RetVal;
 
@@ -65,14 +113,21 @@ _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
      */
     Serial.println("Task one received PING event!");
     /* Send a future pong event to task two */
-    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, _FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, FALSE);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
   return u32RetVal;
 }
 
-_u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
+/** ***********************************************************************************************
+  * @brief      Task handler function
+  * @param      u32EventFlags Bit feild event
+  * @param      u08MsgCount number of messages belonging to this task
+  * @param      u32Param Task parameter
+  * @return     Return unhandled events
+  ********************************************************************************************** */
+static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
 {
   _u32 u32RetVal;
   _char *pcMessage;
@@ -90,7 +145,7 @@ _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
      */
     Serial.println("Task two received PONG event!");
     /* Send a future ping event to task one */
-    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, _FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, FALSE);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
   }

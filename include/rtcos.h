@@ -33,9 +33,9 @@
 /** @defgroup rtcos_exported_defines Exported defines
   * @{
   */
-#define _NIL                                     0x00000000uL
-#define _TRUE                                    (_bool)(1 == 1)
-#define _FALSE                                   (_bool)(0 == 1)
+#define NIL                                      0x00000000uL
+#define TRUE                                     (_bool)(1 == 1)
+#define FALSE                                    (_bool)(0 == 1)
 /**
   * @}
   */
@@ -99,7 +99,7 @@ void rtcos_delay(_u32);
 void rtcos_update_tick(void);
 void rtcos_set_tick_count(_u32);
 _u32 rtcos_get_tick_count(void);
-_u08 rtcos_create_timer(rtcos_timer_type_t, pf_timer_cb_t, void *);
+_s08 rtcos_create_timer(rtcos_timer_type_t, pf_timer_cb_t, void *);
 _bool rtcos_timer_expired(_u08);
 rtcos_status_t rtcos_start_timer(_u08, _u32);
 rtcos_status_t rtcos_stop_timer(_u08);

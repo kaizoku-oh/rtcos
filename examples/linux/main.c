@@ -1,32 +1,63 @@
+/* 
+ **************************************************************************************************
+ *
+ * @file    : main.c
+ * @author  : Bayrem GHARSELLAOUI
+ * @version : 2.0
+ * @date    : April 2021
+ * @brief   : Linux example program
+ * 
+ **************************************************************************************************
+ */
+
+/*-----------------------------------------------------------------------------------------------*/
+/* Includes                                                                                      */
+/*-----------------------------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <time.h>
 #include "rtcos.h"
 
+/*-----------------------------------------------------------------------------------------------*/
+/* Defines                                                                                       */
+/*-----------------------------------------------------------------------------------------------*/
 #define TASK_ID_PRIORITY_ONE                     (_u08)0
 #define TASK_ID_PRIORITY_TWO                     (_u08)1
 #define EVENT_PING                               (_u32)1
 #define EVENT_PONG                               (_u32)2
 
-void delay(_u32 u32Seconds);
-_u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
-_u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
+/*-----------------------------------------------------------------------------------------------*/
+/* Private function prototypes                                                                   */
+/*-----------------------------------------------------------------------------------------------*/
+static void delay(_u32 u32Seconds);
+static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
+static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
 
-int main(int s32Argc, char const *pu08Argv[])
+/** ***********************************************************************************************
+  * @brief      Program entry point
+  * @return     Return nothing
+  ********************************************************************************************** */
+void main(void)
 {
   rtcos_init();
 
   rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (_u32)0);
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (_u32)0);
 
-  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, _FALSE);
+  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, FALSE);
   rtcos_send_message(TASK_ID_PRIORITY_TWO, (void *)"Hello");
 
   rtcos_run();
-
-  return 0;
 }
 
-_u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
+
+/** ***********************************************************************************************
+  * @brief      Task handler function
+  * @param      u32EventFlags Bit feild event
+  * @param      u08MsgCount number of messages belonging to this task
+  * @param      u32Param Task parameter
+  * @return     Return unhandled events
+  ********************************************************************************************** */
+static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
 {
   _u32 u32RetVal;
 
@@ -43,7 +74,7 @@ _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
      */
     printf("Task one received PING event!\r\n");
     /* Send immediate pong event to task two */
-    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 0, _FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 0, FALSE);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
@@ -52,7 +83,15 @@ _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
   return u32RetVal;
 }
 
-_u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
+
+/** ***********************************************************************************************
+  * @brief      Task handler function
+  * @param      u32EventFlags Bit feild event
+  * @param      u08MsgCount number of messages belonging to this task
+  * @param      u32Param Task parameter
+  * @return     Return unhandled events
+  ********************************************************************************************** */
+static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
 {
   _u32 u32RetVal;
   _char *pcMessage;
@@ -70,7 +109,7 @@ _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
      */
     printf("Task two received PONG event!\r\n");
     /* Send immediate ping event to task one */
-    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 0, _FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 0, FALSE);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
   }
@@ -86,7 +125,12 @@ _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
   return u32RetVal;
 }
 
-void delay(_u32 u32Seconds)
+/** ***********************************************************************************************
+  * @brief      Block for a certain time
+  * @param      u32Seconds Number of seconds to wait
+  * @return     Return unhandled events
+  ********************************************************************************************** */
+static void delay(_u32 u32Seconds)
 {
   _u32 u32MilliSeconds;
   clock_t s32StartTime;
