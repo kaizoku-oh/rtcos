@@ -1,8 +1,8 @@
 ## Running the linux example app on PC
 
 ```bash
-$ gcc -Wall examples/linux/app.c src/rtcos.c -Ios -Iinclude -Iexamples/linux -o examples/linux/app
-$ examples/linux/app
+$ gcc -Wall examples/linux/main.c src/rtcos.c -Iinclude -Iexamples/linux -o examples/linux/main
+$ examples/linux/main
 Task one received PING event!
 Task two received PONG event!
 Task two received a message: Hello
@@ -12,7 +12,7 @@ Task two received PONG event!
 $ 
 ```
 
-## Note about running the Linux example:
+### Note:
 
 Since we don't have direct access to a timer tick handler under linux
 this app will only test sending immediate events and messages rather than future events.

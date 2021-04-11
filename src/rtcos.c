@@ -36,7 +36,7 @@ typedef struct
 {
   _u08 u08Head;                                  /**< Fifo head position                         */
   _u08 u08Tail;                                  /**< Fifo tail position                         */
-  _u08 u08Count;                                 /**< Fifo current cout                          */
+  _u08 u08Count;                                 /**< Fifo current count                         */
   void *tpvBuffer[RTCOS_MAX_MESSAGES_COUNT];     /**< Fifo buffer of pointers                    */
 }rtcos_fifo_t;
 
@@ -118,21 +118,21 @@ static void _rtcos_fifo_init(_u08 u08TaskID)
 /** ***********************************************************************************************
   * @brief      Check if the fifo of a certain task is empty
   * @param      u08TaskID ID of the task using this fifo
-  * @return     _TRUE if empty, else _FALSE
+  * @return     TRUE if empty, else FALSE
   ********************************************************************************************** */
 static _bool _rtcos_fifo_empty(_u08 u08TaskID)
 {
-  return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count > 0)?_FALSE:_TRUE;
+  return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count > 0)?FALSE:TRUE;
 }
 
 /** ***********************************************************************************************
   * @brief      Check if the fifo of a certain task is full
   * @param      u08TaskID ID of the task using this fifo
-  * @return     _TRUE if full, else _FALSE
+  * @return     TRUE if full, else FALSE
   ********************************************************************************************** */
 static _bool _rtcos_fifo_full(_u08 u08TaskID)
 {
-  return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count >= RTCOS_MAX_MESSAGES_COUNT)?_TRUE:_FALSE;
+  return (stRtcosCtx.tstTasks[u08TaskID].stFifo.u08Count >= RTCOS_MAX_MESSAGES_COUNT)?TRUE:FALSE;
 }
 
 /** ***********************************************************************************************
@@ -155,7 +155,7 @@ static rtcos_status_t _rtcos_fifo_push(_u08 u08TaskID, void *pvMsg)
 {
   rtcos_status_t eRetVal;
 
-  if(_FALSE == _rtcos_fifo_full(u08TaskID))
+  if(FALSE == _rtcos_fifo_full(u08TaskID))
   {
     stRtcosCtx
       .tstTasks[u08TaskID]
@@ -185,7 +185,7 @@ static rtcos_status_t _rtcos_fifo_pop(_u08 u08TaskID, void **ppvMsg)
 {
   rtcos_status_t eRetVal;
 
-  if(_FALSE == _rtcos_fifo_empty(u08TaskID))
+  if(FALSE == _rtcos_fifo_empty(u08TaskID))
   {
     *ppvMsg = stRtcosCtx
                 .tstTasks[u08TaskID]
@@ -208,21 +208,21 @@ static rtcos_status_t _rtcos_fifo_pop(_u08 u08TaskID, void **ppvMsg)
 /** ***********************************************************************************************
   * @brief      Find the highest priority task with an event or a message
   * @param      pu08NewCurrTaskID This will hold the ID of the found ready task
-  * @return     _TRUE if a task is found, else _FALSE
+  * @return     TRUE if a task is found, else FALSE
   ********************************************************************************************** */
 static _bool _rtcos_find_ready_task(_u08 *pu08NewCurrTaskID)
 {
   _u08 u08Index;
   _bool bRetVal;
 
-  bRetVal = _FALSE;
+  bRetVal = FALSE;
   for(u08Index = 0; u08Index < stRtcosCtx.u08TasksCount; ++u08Index)
   {
     if((0 != stRtcosCtx.tstTasks[u08Index].u32EventFlags) ||
-       (_FALSE == _rtcos_fifo_empty(u08Index)))
+       (FALSE == _rtcos_fifo_empty(u08Index)))
     {
       *pu08NewCurrTaskID = u08Index;
-      bRetVal = _TRUE;
+      bRetVal = TRUE;
       break;
     }
   }
@@ -270,7 +270,7 @@ static rtcos_status_t _rtcos_find_future_event(_u08 u08TaskID,
   eRetVal = RTCOS_ERR_NOT_FOUND;
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
-    if((_TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse) &&
+    if((TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse) &&
        (stRtcosCtx.tstFutureEvents[u08Index].u08TaskID == u08TaskID) && 
        (stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags == u32EventFlags))
     {
@@ -296,7 +296,7 @@ static rtcos_status_t _rtcos_delete_future_event(_u08 u08TaskID, _u32 u32EventFl
   eRetVal = _rtcos_find_future_event(u08TaskID, u32EventFlags, &u08FoundEventIdx);
   if(RTCOS_ERR_NONE == eRetVal)
   {
-    stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = _FALSE;
+    stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = FALSE;
     if(stRtcosCtx.u08FutureEventsCount > 0)
     {
       stRtcosCtx.u08FutureEventsCount--;
@@ -318,7 +318,7 @@ static rtcos_status_t _rtcos_find_empty_future_event_index(_u08 *pu08FoundEventI
   eRetVal = RTCOS_ERR_NOT_FOUND;
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
-    if(_FALSE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
+    if(FALSE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
     {
       *pu08FoundEventIdx = u08Index;
       eRetVal = RTCOS_ERR_NONE;
@@ -357,12 +357,12 @@ static rtcos_status_t _rtcos_add_future_event(_u08 u08TaskID,
     eRetVal = _rtcos_find_empty_future_event_index(&u08FoundEventIdx);
     if(RTCOS_ERR_NONE == eRetVal)
     {
-      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = _TRUE;
+      stRtcosCtx.tstFutureEvents[u08FoundEventIdx].bInUse = TRUE;
       stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32EventDelay = u32EventDelay;
       stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u08TaskID = u08TaskID;
       stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32EventFlags = u32EventFlags;
       ++stRtcosCtx.u08FutureEventsCount;
-      if(_TRUE == bPeriodicEvent)
+      if(TRUE == bPeriodicEvent)
       {   
         stRtcosCtx.tstFutureEvents[u08FoundEventIdx].u32ReloadDelay = u32EventDelay;
       }
@@ -426,13 +426,13 @@ void rtcos_init(void)
 
   for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
   {
-    stRtcosCtx.tstTasks[u08Index].pfTaskHandlerCb = _NIL;
+    stRtcosCtx.tstTasks[u08Index].pfTaskHandlerCb = NIL;
     stRtcosCtx.tstTasks[u08Index].u32EventFlags = 0;
     _rtcos_fifo_init(u08Index);
   }
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
-    stRtcosCtx.tstFutureEvents[u08Index].bInUse = _FALSE;
+    stRtcosCtx.tstFutureEvents[u08Index].bInUse = FALSE;
     stRtcosCtx.tstFutureEvents[u08Index].u08TaskID = 0;
     stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags = 0;
     stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay = 0;
@@ -442,14 +442,14 @@ void rtcos_init(void)
   {
     stRtcosCtx.tstTimers[u08Index].u32StartTickCount = 0;
     stRtcosCtx.tstTimers[u08Index].u32TickDelay = 0;
-    stRtcosCtx.tstTimers[u08Index].bInUse = _FALSE;
-    stRtcosCtx.tstTimers[u08Index].pfTimerCb = _NIL;
+    stRtcosCtx.tstTimers[u08Index].bInUse = FALSE;
+    stRtcosCtx.tstTimers[u08Index].pfTimerCb = NIL;
   }
   stRtcosCtx.u08CurrentTaskID = 0;
   stRtcosCtx.u32SysTicksCount = 0;
   stRtcosCtx.u08TasksCount = 0;
   stRtcosCtx.u08FutureEventsCount = 0;
-  stRtcosCtx.pfIdleHandler = _NIL;
+  stRtcosCtx.pfIdleHandler = NIL;
   stRtcosCtx.u08TimersCount = 0;
 }
 
@@ -468,7 +468,7 @@ rtcos_status_t rtcos_register_task_handler(pf_task_handler_t pfTaskHandler,
 
   if(u08TaskID < RTCOS_MAX_TASKS_COUNT)
   {
-    if(stRtcosCtx.tstTasks[u08TaskID].pfTaskHandlerCb != _NIL)
+    if(stRtcosCtx.tstTasks[u08TaskID].pfTaskHandlerCb != NIL)
     {
       eRetVal = RTCOS_ERR_IN_USE;
     }
@@ -560,23 +560,23 @@ rtcos_status_t rtcos_get_message(void **ppMsg)
   * @param      pvArg Additional argument passed to the timer callback
   * @return     ID of the created timer or error
   ********************************************************************************************** */
-_u08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_timer_cb_t pfTimerCb, void *pvArg)
+_s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_timer_cb_t pfTimerCb, void *pvArg)
 {
-  _u08 eRetVal;
+  _s08 s08RetVal;
 
   ENTER_CRITICAL_SECTION();
   if(stRtcosCtx.u08TimersCount >= RTCOS_MAX_TIMERS_COUNT)
   {
-    eRetVal = RTCOS_ERR_OUT_OF_RESOURCES;
+    s08RetVal = RTCOS_ERR_OUT_OF_RESOURCES;
   }
   else
   {
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].ePeriodType = ePeriodType;
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pfTimerCb = pfTimerCb;
-    eRetVal = stRtcosCtx.u08TimersCount++;
+    s08RetVal = stRtcosCtx.u08TimersCount++;
   }
   EXIT_CRITICAL_SECTION();
-  return eRetVal;
+  return s08RetVal;
 }
 
 /** ***********************************************************************************************
@@ -598,7 +598,7 @@ rtcos_status_t rtcos_start_timer(_u08 u08TimerID, _u32 u32PeriodInTicks)
   {
     stRtcosCtx.tstTimers[u08TimerID].u32TickDelay = u32PeriodInTicks;
     stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount = stRtcosCtx.u32SysTicksCount;
-    stRtcosCtx.tstTimers[u08TimerID].bInUse = _TRUE;
+    stRtcosCtx.tstTimers[u08TimerID].bInUse = TRUE;
     eRetVal = RTCOS_ERR_NONE;
   }
   EXIT_CRITICAL_SECTION();
@@ -621,7 +621,7 @@ rtcos_status_t rtcos_stop_timer(_u08 u08TimerID)
   }
   else
   {
-    stRtcosCtx.tstTimers[u08TimerID].bInUse = _FALSE;
+    stRtcosCtx.tstTimers[u08TimerID].bInUse = FALSE;
     eRetVal = RTCOS_ERR_NONE;
   }
   EXIT_CRITICAL_SECTION();
@@ -631,14 +631,14 @@ rtcos_status_t rtcos_stop_timer(_u08 u08TimerID)
 /** ***********************************************************************************************
   * @brief      Check if the os software timer has expired
   * @param      u08TimerID ID of the timer to check
-  * @return     _TRUE if timer has expired, else _FALSE
+  * @return     TRUE if timer has expired, else FALSE
   ********************************************************************************************** */
 _bool rtcos_timer_expired(_u08 u08TimerID)
 {
   _u32 u32CurrentTicksCount;
   _bool bExpired;
 
-  bExpired = _FALSE;
+  bExpired = FALSE;
   u32CurrentTicksCount = stRtcosCtx.u32SysTicksCount;
   ENTER_CRITICAL_SECTION();
   if((stRtcosCtx.tstTimers[u08TimerID].bInUse) && (u08TimerID < RTCOS_MAX_TIMERS_COUNT))
@@ -646,7 +646,7 @@ _bool rtcos_timer_expired(_u08 u08TimerID)
     if((u32CurrentTicksCount - stRtcosCtx.tstTimers[u08TimerID].u32StartTickCount) >
        (stRtcosCtx.tstTimers[u08TimerID].u32TickDelay))
     {
-      bExpired = _TRUE;
+      bExpired = TRUE;
     }
   }
   EXIT_CRITICAL_SECTION();
@@ -762,11 +762,11 @@ void rtcos_run(void)
     ENTER_CRITICAL_SECTION();
     bFoundReadyTask = _rtcos_find_ready_task(&u08NewCurrTaskID);
     EXIT_CRITICAL_SECTION();
-    if(_TRUE == bFoundReadyTask)
+    if(TRUE == bFoundReadyTask)
     {
       _rtcos_run_ready_task(u08NewCurrTaskID);
     }
-    else if((_NIL != stRtcosCtx.pfIdleHandler) &&
+    else if((NIL != stRtcosCtx.pfIdleHandler) &&
             (0 == stRtcosCtx.u08FutureEventsCount))
     {
       (stRtcosCtx.pfIdleHandler)();
@@ -788,7 +788,7 @@ void rtcos_update_tick(void)
   ++stRtcosCtx.u32SysTicksCount;
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
-    if(_TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
+    if(TRUE == stRtcosCtx.tstFutureEvents[u08Index].bInUse)
     {
       --stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay; 
       if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay)
@@ -802,7 +802,7 @@ void rtcos_update_tick(void)
             .u32EventFlags |= stRtcosCtx.tstFutureEvents[u08Index].u32EventFlags;
         if(0 == stRtcosCtx.tstFutureEvents[u08Index].u32ReloadDelay)
         {
-          stRtcosCtx.tstFutureEvents[u08Index].bInUse = _FALSE;
+          stRtcosCtx.tstFutureEvents[u08Index].bInUse = FALSE;
         }
         else
         {
@@ -825,7 +825,7 @@ void rtcos_update_tick(void)
         }
         if(RTCOS_TIMER_ONE_SHOT == stRtcosCtx.tstTimers[u08Index].ePeriodType)
         {
-          stRtcosCtx.tstTimers[u08Index].bInUse = _FALSE;
+          stRtcosCtx.tstTimers[u08Index].bInUse = FALSE;
         }
         stRtcosCtx.tstTimers[u08Index].u32StartTickCount = stRtcosCtx.u32SysTicksCount;
       }
