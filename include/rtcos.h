@@ -57,11 +57,11 @@ typedef unsigned long                            _u32;
 typedef signed long                              _s32;
 typedef unsigned long long                       _u64;
 typedef signed long long                         _s64;
-typedef void (*pFunction)(void);
+
 /** RTCOS related types */
-typedef void (*pf_idle_handler_t)(void);
-typedef void (*pf_timer_cb_t)(void const *);
-typedef _u32 (*pf_task_handler_t)(_u32, _u08, _u32);
+typedef void (*pf_os_idle_handler_t)(void);
+typedef void (*pf_os_timer_cb_t)(void const *);
+typedef _u32 (*pf_os_task_handler_t)(_u32, _u08, _u32);
 typedef enum
 {
   RTCOS_ERR_NONE             = 0,
@@ -99,12 +99,12 @@ void rtcos_delay(_u32);
 void rtcos_update_tick(void);
 void rtcos_set_tick_count(_u32);
 _u32 rtcos_get_tick_count(void);
-_s08 rtcos_create_timer(rtcos_timer_type_t, pf_timer_cb_t, void *);
+_s08 rtcos_create_timer(rtcos_timer_type_t, pf_os_timer_cb_t, void *);
 _bool rtcos_timer_expired(_u08);
 rtcos_status_t rtcos_start_timer(_u08, _u32);
 rtcos_status_t rtcos_stop_timer(_u08);
-rtcos_status_t rtcos_register_task_handler(pf_task_handler_t, _u08, _u32);
-rtcos_status_t rtcos_register_idle_handler(pf_idle_handler_t);
+rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t, _u08, _u32);
+rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t);
 rtcos_status_t rtcos_send_event(_u08, _u32, _u32, _bool);
 rtcos_status_t rtcos_clear_event(_u08, _u32);
 rtcos_status_t rtcos_send_message(_u08, void *);

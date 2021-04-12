@@ -57,14 +57,14 @@ typedef struct
   rtcos_timer_type_t ePeriodType;                /**< Periodic or one shot timer                 */
   volatile _u32	u32StartTickCount;               /**< Start time of the timer                    */
   _u32 u32TickDelay;                             /**< Period of the timer                        */
-  pf_timer_cb_t pfTimerCb;                       /**< Timer callback function                    */
+  pf_os_timer_cb_t pfTimerCb;                       /**< Timer callback function                    */
 }rtcos_timer_t;
 
 /** Task structure representing information about each task */
 typedef struct
 {
   volatile _u32 u32EventFlags;                   /**< Event flags associated to this task        */
-  pf_task_handler_t pfTaskHandlerCb;             /**< Task handler function                      */
+  pf_os_task_handler_t pfTaskHandlerCb;             /**< Task handler function                      */
   _u32 u32TaskParam;                             /**< Task parameter                             */
   rtcos_fifo_t stFifo;                           /**< Fifo associated to this task               */
 }rtcos_task_t;
@@ -75,7 +75,7 @@ typedef struct
   _u08 u08TasksCount;                            /**< Number of the tasks present in the system  */
   _u08 u08CurrentTaskID;                         /**< Current task ID                            */
   volatile _u32 u32SysTicksCount;                 /**< Current number of the system ticks        */
-  pf_idle_handler_t pfIdleHandler;               /**< Handler function when the system is Idle   */
+  pf_os_idle_handler_t pfIdleHandler;               /**< Handler function when the system is Idle   */
   volatile _u08 u08FutureEventsCount;            /**< Number of the events present in the system */
   rtcos_future_event_t tstFutureEvents[RTCOS_MAX_FUTURE_EVENTS_COUNT]; /**< Array of events      */
   rtcos_task_t tstTasks[RTCOS_MAX_TASKS_COUNT];  /**< Array of tasks                             */
@@ -460,7 +460,7 @@ void rtcos_init(void)
   * @param      u32TaskParam Task parameter
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
-rtcos_status_t rtcos_register_task_handler(pf_task_handler_t pfTaskHandler,
+rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t pfTaskHandler,
                                            _u08 u08TaskID,
                                            _u32 u32TaskParam)
 {
@@ -492,7 +492,7 @@ rtcos_status_t rtcos_register_task_handler(pf_task_handler_t pfTaskHandler,
   * @param      pfIdleHandler idle handler function
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
-rtcos_status_t rtcos_register_idle_handler(pf_idle_handler_t pfIdleHandler)
+rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t pfIdleHandler)
 {
   rtcos_status_t eRetVal;
 
@@ -560,7 +560,7 @@ rtcos_status_t rtcos_get_message(void **ppMsg)
   * @param      pvArg Additional argument passed to the timer callback
   * @return     ID of the created timer or error
   ********************************************************************************************** */
-_s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_timer_cb_t pfTimerCb, void *pvArg)
+_s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_os_timer_cb_t pfTimerCb, void *pvArg)
 {
   _s08 s08RetVal;
 
