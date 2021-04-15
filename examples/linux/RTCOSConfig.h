@@ -3,7 +3,7 @@
  *
  * @file    : RTCOSConfig.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.1.1
+ * @version : 1.2.0
  * @date    : April 2021
  * @brief   : RTCOS user configuration example used to overrite os default configuration
  * 
@@ -16,6 +16,9 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
+#define RTCOS_ENABLE_MESSAGES
+#define RTCOS_ENABLE_TIMERS
+
 #define RTCOS_MAX_TASKS_COUNT                    2
 #define RTCOS_MAX_FUTURE_EVENTS_COUNT            2
 #define RTCOS_MAX_MESSAGES_COUNT                 2

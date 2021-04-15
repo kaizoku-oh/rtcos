@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.1.1
+ * @version : 1.2.0
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -31,6 +31,7 @@
 /** @defgroup rtcos_private_types Private types
   * @{
   */
+#ifdef RTCOS_ENABLE_MESSAGES
 /** Fifo structure used for storing messages */
 typedef struct
 {
@@ -39,6 +40,7 @@ typedef struct
   _u08 u08Count;                                 /**< Fifo current count                         */
   void *tpvBuffer[RTCOS_MAX_MESSAGES_COUNT];     /**< Fifo buffer of pointers                    */
 }rtcos_fifo_t;
+#endif /* RTCOS_ENABLE_MESSAGES */
 
 /** Future event structure representing information about each event */
 typedef struct
@@ -50,6 +52,7 @@ typedef struct
   volatile _bool bInUse;                         /**< Indicates if the event is still used       */
 }rtcos_future_event_t;
 
+#ifdef RTCOS_ENABLE_TIMERS
 /** Software os timer structure representing information about each timer */
 typedef struct
 {
@@ -57,16 +60,19 @@ typedef struct
   rtcos_timer_type_t ePeriodType;                /**< Periodic or one shot timer                 */
   volatile _u32	u32StartTickCount;               /**< Start time of the timer                    */
   _u32 u32TickDelay;                             /**< Period of the timer                        */
-  pf_os_timer_cb_t pfTimerCb;                       /**< Timer callback function                    */
+  pf_os_timer_cb_t pfTimerCb;                    /**< Timer callback function                    */
 }rtcos_timer_t;
+#endif /* RTCOS_ENABLE_TIMERS */
 
 /** Task structure representing information about each task */
 typedef struct
 {
   volatile _u32 u32EventFlags;                   /**< Event flags associated to this task        */
-  pf_os_task_handler_t pfTaskHandlerCb;             /**< Task handler function                      */
+  pf_os_task_handler_t pfTaskHandlerCb;          /**< Task handler function                      */
   _u32 u32TaskParam;                             /**< Task parameter                             */
+#ifdef RTCOS_ENABLE_MESSAGES
   rtcos_fifo_t stFifo;                           /**< Fifo associated to this task               */
+#endif /* RTCOS_ENABLE_MESSAGES */
 }rtcos_task_t;
 
 /** Context structure representing the main context of the OS */
@@ -74,13 +80,15 @@ typedef struct
 {
   _u08 u08TasksCount;                            /**< Number of the tasks present in the system  */
   _u08 u08CurrentTaskID;                         /**< Current task ID                            */
-  volatile _u32 u32SysTicksCount;                 /**< Current number of the system ticks        */
-  pf_os_idle_handler_t pfIdleHandler;               /**< Handler function when the system is Idle   */
+  volatile _u32 u32SysTicksCount;                /**< Current number of the system ticks         */
+  pf_os_idle_handler_t pfIdleHandler;            /**< Handler function when the system is Idle   */
   volatile _u08 u08FutureEventsCount;            /**< Number of the events present in the system */
   rtcos_future_event_t tstFutureEvents[RTCOS_MAX_FUTURE_EVENTS_COUNT]; /**< Array of events      */
   rtcos_task_t tstTasks[RTCOS_MAX_TASKS_COUNT];  /**< Array of tasks                             */
+#ifdef RTCOS_ENABLE_TIMERS
   rtcos_timer_t tstTimers[RTCOS_MAX_TIMERS_COUNT]; /**< Array of timers                          */
   _u08 u08TimersCount;                           /**< Number of the timers present in the system */
+#endif /* RTCOS_ENABLE_TIMERS */
 }rtcos_ctx_t;
 /**
   * @}
@@ -103,6 +111,7 @@ static rtcos_ctx_t stRtcosCtx;
 /** @defgroup rtcos_private_functions Private functions
   * @{
   */
+#ifdef RTCOS_ENABLE_MESSAGES
 /** ***********************************************************************************************
   * @brief      Initialize the fifo that will hold a task's messages
   * @param      u08TaskID ID of the task using this fifo
@@ -204,6 +213,7 @@ static rtcos_status_t _rtcos_fifo_pop(_u08 u08TaskID, void **ppvMsg)
   }
   return eRetVal;
 }
+#endif /* RTCOS_ENABLE_MESSAGES */
 
 /** ***********************************************************************************************
   * @brief      Find the highest priority task with an event or a message
@@ -218,8 +228,11 @@ static _bool _rtcos_find_ready_task(_u08 *pu08NewCurrTaskID)
   bRetVal = FALSE;
   for(u08Index = 0; u08Index < stRtcosCtx.u08TasksCount; ++u08Index)
   {
-    if((0 != stRtcosCtx.tstTasks[u08Index].u32EventFlags) ||
-       (FALSE == _rtcos_fifo_empty(u08Index)))
+    if((0 != stRtcosCtx.tstTasks[u08Index].u32EventFlags)
+#ifdef RTCOS_ENABLE_MESSAGES
+       || (FALSE == _rtcos_fifo_empty(u08Index))
+#endif /* RTCOS_ENABLE_MESSAGES */
+      )
     {
       *pu08NewCurrTaskID = u08Index;
       bRetVal = TRUE;
@@ -246,7 +259,11 @@ static void _rtcos_run_ready_task(_u08 u08NewCurrTaskID)
   RTCOS_EXIT_CRITICAL_SECTION();
   u32UnhandledEvents = (stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].pfTaskHandlerCb)
                        (u32CurrentEvents,
+#ifdef RTCOS_ENABLE_MESSAGES
                         _rtcos_fifo_count(stRtcosCtx.u08CurrentTaskID),
+#else
+                        0,
+#endif /* RTCOS_ENABLE_MESSAGES */
                         stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32TaskParam);
   RTCOS_ENTER_CRITICAL_SECTION();
   stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags |= u32UnhandledEvents;
@@ -428,7 +445,9 @@ void rtcos_init(void)
   {
     stRtcosCtx.tstTasks[u08Index].pfTaskHandlerCb = NIL;
     stRtcosCtx.tstTasks[u08Index].u32EventFlags = 0;
+#ifdef RTCOS_ENABLE_MESSAGES
     _rtcos_fifo_init(u08Index);
+#endif /* RTCOS_ENABLE_MESSAGES */
   }
   for(u08Index = 0; u08Index < RTCOS_MAX_FUTURE_EVENTS_COUNT; ++u08Index)
   {
@@ -438,6 +457,7 @@ void rtcos_init(void)
     stRtcosCtx.tstFutureEvents[u08Index].u32EventDelay = 0;
     stRtcosCtx.tstFutureEvents[u08Index].u32ReloadDelay = 0;
   }
+#ifdef RTCOS_ENABLE_TIMERS
   for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
   {
     stRtcosCtx.tstTimers[u08Index].u32StartTickCount = 0;
@@ -445,12 +465,12 @@ void rtcos_init(void)
     stRtcosCtx.tstTimers[u08Index].bInUse = FALSE;
     stRtcosCtx.tstTimers[u08Index].pfTimerCb = NIL;
   }
+  stRtcosCtx.u08TimersCount = 0;
+#endif /* RTCOS_ENABLE_TIMERS */
   stRtcosCtx.u08CurrentTaskID = 0;
   stRtcosCtx.u32SysTicksCount = 0;
-  stRtcosCtx.u08TasksCount = 0;
   stRtcosCtx.u08FutureEventsCount = 0;
   stRtcosCtx.pfIdleHandler = NIL;
-  stRtcosCtx.u08TimersCount = 0;
 }
 
 /** ***********************************************************************************************
@@ -508,6 +528,7 @@ rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t pfIdleHandler)
   return eRetVal;
 }
 
+#ifdef RTCOS_ENABLE_MESSAGES
 /** ***********************************************************************************************
   * @brief      Send a message to a task
   * @param      u08TaskID ID of the task which will receive the message
@@ -552,7 +573,9 @@ rtcos_status_t rtcos_get_message(void **ppMsg)
   }
   return eRetVal;
 }
+#endif /* RTCOS_ENABLE_MESSAGES */
 
+#ifdef RTCOS_ENABLE_TIMERS
 /** ***********************************************************************************************
   * @brief      Create an os software timer
   * @param      ePeriodType timer type as defined in ::rtcos_timer_type_t
@@ -652,6 +675,7 @@ _bool rtcos_timer_expired(_u08 u08TimerID)
   RTCOS_EXIT_CRITICAL_SECTION();
   return bExpired;
 }
+#endif /* RTCOS_ENABLE_TIMERS */
 
 /** ***********************************************************************************************
   * @brief      Set an event for a certain task
@@ -813,6 +837,7 @@ void rtcos_update_tick(void)
       }
     }
   }
+#ifdef RTCOS_ENABLE_TIMERS
   if(stRtcosCtx.u08TimersCount > 0)
   {
     for(u08Index = 0; u08Index < stRtcosCtx.u08TimersCount; u08Index++)
@@ -831,6 +856,7 @@ void rtcos_update_tick(void)
       }
     }
   }
+#endif /* RTCOS_ENABLE_TIMERS */
   RTCOS_EXIT_CRITICAL_SECTION();
 }
 /**
