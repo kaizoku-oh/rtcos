@@ -28,6 +28,17 @@
 #define RTCOS_H
 
 /*-----------------------------------------------------------------------------------------------*/
+/* Includes                                                                                      */
+/*-----------------------------------------------------------------------------------------------*/
+/** @defgroup rtcos_private_includes Private includes
+  * @{
+  */
+#include "config.h"
+/**
+  * @}
+  */
+
+/*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
 /** @defgroup rtcos_exported_defines Exported defines
@@ -60,7 +71,9 @@ typedef signed long long                         _s64;
 
 /** RTCOS related types */
 typedef void (*pf_os_idle_handler_t)(void);
+#ifdef RTCOS_ENABLE_TIMERS
 typedef void (*pf_os_timer_cb_t)(void const *);
+#endif /* RTCOS_ENABLE_TIMERS */
 typedef _u32 (*pf_os_task_handler_t)(_u32, _u08, _u32);
 typedef enum
 {
@@ -76,11 +89,14 @@ typedef enum
   RTCOS_ERR_MSG_EMPTY        = -9,
   RTCOS_ERR_ARG              = -10,
 }rtcos_status_t;
+
+#ifdef RTCOS_ENABLE_TIMERS
 typedef enum
 {
   RTCOS_TIMER_PERIODIC       = 0,
   RTCOS_TIMER_ONE_SHOT,
 }rtcos_timer_type_t;
+#endif /* RTCOS_ENABLE_TIMERS */
 /**
   * @}
   */
@@ -99,16 +115,20 @@ void rtcos_delay(_u32);
 void rtcos_update_tick(void);
 void rtcos_set_tick_count(_u32);
 _u32 rtcos_get_tick_count(void);
+#ifdef RTCOS_ENABLE_TIMERS
 _s08 rtcos_create_timer(rtcos_timer_type_t, pf_os_timer_cb_t, void *);
 _bool rtcos_timer_expired(_u08);
 rtcos_status_t rtcos_start_timer(_u08, _u32);
 rtcos_status_t rtcos_stop_timer(_u08);
+#endif /* RTCOS_ENABLE_TIMERS */
 rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t, _u08, _u32);
 rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t);
 rtcos_status_t rtcos_send_event(_u08, _u32, _u32, _bool);
 rtcos_status_t rtcos_clear_event(_u08, _u32);
+#ifdef RTCOS_ENABLE_MESSAGES
 rtcos_status_t rtcos_send_message(_u08, void *);
 rtcos_status_t rtcos_get_message(void **);
+#endif /* RTCOS_ENABLE_MESSAGES */
 
 #if defined(__cplusplus)
 }

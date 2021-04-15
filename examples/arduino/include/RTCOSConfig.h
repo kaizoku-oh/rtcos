@@ -21,6 +21,9 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
+#define RTCOS_ENABLE_MESSAGES
+#define RTCOS_ENABLE_TIMERS
+
 #define RTCOS_MAX_TASKS_COUNT                    2
 #define RTCOS_MAX_FUTURE_EVENTS_COUNT            2
 #define RTCOS_MAX_MESSAGES_COUNT                 2
