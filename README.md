@@ -20,5 +20,12 @@ RTCOS is written in pure C and doesn't need any thirdparty library or dependency
 
 Being hardware agnostic, RTCOS can work on any hardware platform that can provide a hardware timer tick and optionally an interface to enter and exit critical section.
 
+## TODO ✅
+
+* Add timer callback void * argument
+* Change the argument type passed to the task handler from _u32 to void *
+* Add broadcast event function
+* Add broadcast message function
+
 ## Acknowledgments
 - This project is inspired from the work done by [Jon Norenberg](https://github.com/norenberg99) in [rtcOS](https://github.com/norenberg99/rtcOS) project.
