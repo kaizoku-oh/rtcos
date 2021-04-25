@@ -12,7 +12,7 @@
 ![GitHub issues](https://img.shields.io/github/issues/kaizoku-oh/rtcos)
 ![GitHub top language](https://img.shields.io/github/languages/top/kaizoku-oh/rtcos)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Twitter follow](https://img.shields.io/twitter/follow/kaizoku_ouh?style=social)
+[![Twitter follow](https://img.shields.io/twitter/follow/kaizoku_ouh?style=social)](https://twitter.com/kaizoku_ouh)
 
 is an event-driven RTC (Run To Completion) scheduler dedicated to ultra constrained IoT devices.
 
