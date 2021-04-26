@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.0
+ * @version : 1.2.1
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -61,6 +61,7 @@ typedef struct
   volatile _u32	u32StartTickCount;               /**< Start time of the timer                    */
   _u32 u32TickDelay;                             /**< Period of the timer                        */
   pf_os_timer_cb_t pfTimerCb;                    /**< Timer callback function                    */
+  void *pvArg;                                   /**< Timer callback argument                    */
 }rtcos_timer_t;
 #endif /* RTCOS_ENABLE_TIMERS */
 
@@ -69,7 +70,7 @@ typedef struct
 {
   volatile _u32 u32EventFlags;                   /**< Event flags associated to this task        */
   pf_os_task_handler_t pfTaskHandlerCb;          /**< Task handler function                      */
-  _u32 u32TaskParam;                             /**< Task parameter                             */
+   void *pvArg;                                  /**< Task argument                              */
 #ifdef RTCOS_ENABLE_MESSAGES
   rtcos_fifo_t stFifo;                           /**< Fifo associated to this task               */
 #endif /* RTCOS_ENABLE_MESSAGES */
@@ -264,7 +265,7 @@ static void _rtcos_run_ready_task(_u08 u08NewCurrTaskID)
 #else
                         0,
 #endif /* RTCOS_ENABLE_MESSAGES */
-                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32TaskParam);
+                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].pvArg);
   RTCOS_ENTER_CRITICAL_SECTION();
   stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags |= u32UnhandledEvents;
   RTCOS_EXIT_CRITICAL_SECTION();
@@ -464,6 +465,7 @@ void rtcos_init(void)
     stRtcosCtx.tstTimers[u08Index].u32TickDelay = 0;
     stRtcosCtx.tstTimers[u08Index].bInUse = FALSE;
     stRtcosCtx.tstTimers[u08Index].pfTimerCb = NIL;
+    stRtcosCtx.tstTimers[u08Index].pvArg = NIL;
   }
   stRtcosCtx.u08TimersCount = 0;
 #endif /* RTCOS_ENABLE_TIMERS */
@@ -477,12 +479,12 @@ void rtcos_init(void)
   * @brief      Register a task handler if there is space
   * @param      pfTaskHandler task handler function
   * @param      u08TaskID ID of this task
-  * @param      u32TaskParam Task parameter
+  * @param      pvArg Task argument
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
 rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t pfTaskHandler,
                                            _u08 u08TaskID,
-                                           _u32 u32TaskParam)
+                                           void *pvArg)
 {
   rtcos_status_t eRetVal;
 
@@ -495,7 +497,7 @@ rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t pfTaskHandler,
     else
     {
       stRtcosCtx.tstTasks[u08TaskID].pfTaskHandlerCb = pfTaskHandler;
-      stRtcosCtx.tstTasks[u08TaskID].u32TaskParam = u32TaskParam;
+      stRtcosCtx.tstTasks[u08TaskID].pvArg = pvArg;
       ++stRtcosCtx.u08TasksCount;
       eRetVal = RTCOS_ERR_NONE;
     }
@@ -596,6 +598,7 @@ _s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_os_timer_cb_t pfTimer
   {
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].ePeriodType = ePeriodType;
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pfTimerCb = pfTimerCb;
+    stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pvArg = pvArg;
     s08RetVal = stRtcosCtx.u08TimersCount++;
   }
   RTCOS_EXIT_CRITICAL_SECTION();
@@ -846,7 +849,7 @@ void rtcos_update_tick(void)
       {
         if(stRtcosCtx.tstTimers[u08Index].pfTimerCb)
         {
-          stRtcosCtx.tstTimers[u08Index].pfTimerCb(0);
+          stRtcosCtx.tstTimers[u08Index].pfTimerCb(stRtcosCtx.tstTimers[u08Index].pvArg);
         }
         if(RTCOS_TIMER_ONE_SHOT == stRtcosCtx.tstTimers[u08Index].ePeriodType)
         {

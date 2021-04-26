@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.0
+ * @version : 1.2.1
  * @date    : April 2021
  * @brief   : RTCOS header file
  * 
@@ -74,7 +74,7 @@ typedef void (*pf_os_idle_handler_t)(void);
 #ifdef RTCOS_ENABLE_TIMERS
 typedef void (*pf_os_timer_cb_t)(void const *);
 #endif /* RTCOS_ENABLE_TIMERS */
-typedef _u32 (*pf_os_task_handler_t)(_u32, _u08, _u32);
+typedef _u32 (*pf_os_task_handler_t)(_u32, _u08, void const *);
 typedef enum
 {
   RTCOS_ERR_NONE             = 0,
@@ -121,7 +121,7 @@ _bool rtcos_timer_expired(_u08);
 rtcos_status_t rtcos_start_timer(_u08, _u32);
 rtcos_status_t rtcos_stop_timer(_u08);
 #endif /* RTCOS_ENABLE_TIMERS */
-rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t, _u08, _u32);
+rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t, _u08,  void *);
 rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t);
 rtcos_status_t rtcos_send_event(_u08, _u32, _u32, _bool);
 rtcos_status_t rtcos_clear_event(_u08, _u32);

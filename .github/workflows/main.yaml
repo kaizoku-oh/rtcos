@@ -29,7 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
 
-    # Buil the firmware
+    # Build the firmware
     - name: Build Firmware
       run: |
         cd examples/arduino
@@ -41,7 +41,7 @@ jobs:
         cd examples/arduino
         pio check
 
-    # Generate doxygene documentation
+    # Generate doxygen documentation
     - name: Generate documentation
       uses: mattnotmitt/doxygen-action@v1
       with:
