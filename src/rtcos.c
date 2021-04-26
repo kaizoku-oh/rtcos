@@ -70,7 +70,7 @@ typedef struct
 {
   volatile _u32 u32EventFlags;                   /**< Event flags associated to this task        */
   pf_os_task_handler_t pfTaskHandlerCb;          /**< Task handler function                      */
-  _u32 u32TaskParam;                             /**< Task parameter                             */
+   void *pvArg;                                  /**< Task argument                              */
 #ifdef RTCOS_ENABLE_MESSAGES
   rtcos_fifo_t stFifo;                           /**< Fifo associated to this task               */
 #endif /* RTCOS_ENABLE_MESSAGES */
@@ -265,7 +265,7 @@ static void _rtcos_run_ready_task(_u08 u08NewCurrTaskID)
 #else
                         0,
 #endif /* RTCOS_ENABLE_MESSAGES */
-                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32TaskParam);
+                        stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].pvArg);
   RTCOS_ENTER_CRITICAL_SECTION();
   stRtcosCtx.tstTasks[stRtcosCtx.u08CurrentTaskID].u32EventFlags |= u32UnhandledEvents;
   RTCOS_EXIT_CRITICAL_SECTION();
@@ -479,12 +479,12 @@ void rtcos_init(void)
   * @brief      Register a task handler if there is space
   * @param      pfTaskHandler task handler function
   * @param      u08TaskID ID of this task
-  * @param      u32TaskParam Task parameter
+  * @param      pvArg Task argument
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
 rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t pfTaskHandler,
                                            _u08 u08TaskID,
-                                           _u32 u32TaskParam)
+                                           void *pvArg)
 {
   rtcos_status_t eRetVal;
 
@@ -497,7 +497,7 @@ rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t pfTaskHandler,
     else
     {
       stRtcosCtx.tstTasks[u08TaskID].pfTaskHandlerCb = pfTaskHandler;
-      stRtcosCtx.tstTasks[u08TaskID].u32TaskParam = u32TaskParam;
+      stRtcosCtx.tstTasks[u08TaskID].pvArg = pvArg;
       ++stRtcosCtx.u08TasksCount;
       eRetVal = RTCOS_ERR_NONE;
     }
