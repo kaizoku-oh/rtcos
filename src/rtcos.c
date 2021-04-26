@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.0
+ * @version : 1.2.1
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -61,6 +61,7 @@ typedef struct
   volatile _u32	u32StartTickCount;               /**< Start time of the timer                    */
   _u32 u32TickDelay;                             /**< Period of the timer                        */
   pf_os_timer_cb_t pfTimerCb;                    /**< Timer callback function                    */
+  void *pvArg;                                   /**< Timer callback argument                    */
 }rtcos_timer_t;
 #endif /* RTCOS_ENABLE_TIMERS */
 
@@ -464,6 +465,7 @@ void rtcos_init(void)
     stRtcosCtx.tstTimers[u08Index].u32TickDelay = 0;
     stRtcosCtx.tstTimers[u08Index].bInUse = FALSE;
     stRtcosCtx.tstTimers[u08Index].pfTimerCb = NIL;
+    stRtcosCtx.tstTimers[u08Index].pvArg = NIL;
   }
   stRtcosCtx.u08TimersCount = 0;
 #endif /* RTCOS_ENABLE_TIMERS */
@@ -596,6 +598,7 @@ _s08 rtcos_create_timer(rtcos_timer_type_t ePeriodType, pf_os_timer_cb_t pfTimer
   {
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].ePeriodType = ePeriodType;
     stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pfTimerCb = pfTimerCb;
+    stRtcosCtx.tstTimers[stRtcosCtx.u08TimersCount].pvArg = pvArg;
     s08RetVal = stRtcosCtx.u08TimersCount++;
   }
   RTCOS_EXIT_CRITICAL_SECTION();
@@ -846,7 +849,7 @@ void rtcos_update_tick(void)
       {
         if(stRtcosCtx.tstTimers[u08Index].pfTimerCb)
         {
-          stRtcosCtx.tstTimers[u08Index].pfTimerCb(0);
+          stRtcosCtx.tstTimers[u08Index].pfTimerCb(stRtcosCtx.tstTimers[u08Index].pvArg);
         }
         if(RTCOS_TIMER_ONE_SHOT == stRtcosCtx.tstTimers[u08Index].ePeriodType)
         {
