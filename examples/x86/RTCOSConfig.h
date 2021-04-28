@@ -1,53 +1,33 @@
 /* 
  **************************************************************************************************
  *
- * @file    : config.h
+ * @file    : RTCOSConfig.h
  * @author  : Bayrem GHARSELLAOUI
  * @version : 1.2.2
  * @date    : April 2021
- * @brief   : RTCOS default configuration file
+ * @brief   : RTCOS user configuration example used to overrite os default configuration
  * 
  **************************************************************************************************
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
-
-/*-----------------------------------------------------------------------------------------------*/
-/* Includes                                                                                      */
-/*-----------------------------------------------------------------------------------------------*/
-#include "RTCOSConfig.h"
+#ifndef RTCOS_CONFIG_H
+#define RTCOS_CONFIG_H
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
-/** System default configuration if no user configuration is specified */
+#define RTCOS_ENABLE_MESSAGES
+#define RTCOS_ENABLE_TIMERS
 
-#ifndef RTCOS_MAX_TASKS_COUNT
 #define RTCOS_MAX_TASKS_COUNT                    2
-#endif /* RTCOS_MAX_TASKS_COUNT */
-
-#ifndef RTCOS_MAX_FUTURE_EVENTS_COUNT
 #define RTCOS_MAX_FUTURE_EVENTS_COUNT            2
-#endif /* RTCOS_MAX_FUTURE_EVENTS_COUNT */
-
-#ifndef RTCOS_MAX_MESSAGES_COUNT
 #define RTCOS_MAX_MESSAGES_COUNT                 2
-#endif /* RTCOS_MAX_MESSAGES_COUNT */
-
-#ifndef RTCOS_MAX_TIMERS_COUNT
 #define RTCOS_MAX_TIMERS_COUNT                   2
-#endif /* RTCOS_MAX_TIMERS_COUNT */
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Macros                                                                                        */
 /*-----------------------------------------------------------------------------------------------*/
-#ifndef RTCOS_ENTER_CRITICAL_SECTION
 #define RTCOS_ENTER_CRITICAL_SECTION()
-#endif /* RTCOS_ENTER_CRITICAL_SECTION */
-
-#ifndef RTCOS_EXIT_CRITICAL_SECTION
 #define RTCOS_EXIT_CRITICAL_SECTION()
-#endif /* RTCOS_EXIT_CRITICAL_SECTION */
 
-#endif /* CONFIG_H */
+#endif /* RTCOS_CONFIG_H */

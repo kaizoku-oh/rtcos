@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.1
+ * @version : 1.2.2
  * @date    : April 2021
  * @brief   : RTCOS header file
  * 
@@ -124,6 +124,7 @@ rtcos_status_t rtcos_stop_timer(_u08);
 rtcos_status_t rtcos_register_task_handler(pf_os_task_handler_t, _u08,  void *);
 rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t);
 rtcos_status_t rtcos_send_event(_u08, _u32, _u32, _bool);
+rtcos_status_t rtcos_broadcast_event(_u32, _u32, _bool);
 rtcos_status_t rtcos_clear_event(_u08, _u32);
 #ifdef RTCOS_ENABLE_MESSAGES
 rtcos_status_t rtcos_send_message(_u08, void *);
