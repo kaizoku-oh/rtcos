@@ -3,7 +3,7 @@
  *
  * @file    : main.cpp
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.1
+ * @version : 1.2.2
  * @date    : April 2021
  * @brief   : Arduino example sketch
  * 
@@ -25,6 +25,7 @@
 #define TASK_ID_PRIORITY_TWO                     (_u08)1
 #define EVENT_PING                               (_u32)1
 #define EVENT_PONG                               (_u32)2
+#define EVENT_COMMON                             (_u32)3
 #define SERIAL_BAUDRATE                          9600
 #define HARDWARE_TIMER_PERIOD_IN_US              1000
 #define SOFTWARE_TIMER_PERIOD_IN_MS              100
@@ -65,6 +66,7 @@ void setup()
   rtcos_send_message(TASK_ID_PRIORITY_TWO, (void *)"Hello");
   u08OsTimerID = rtcos_create_timer(RTCOS_TIMER_PERIODIC, _on_os_timer_expired, (void *)"blink");
   rtcos_start_timer(u08OsTimerID, SOFTWARE_TIMER_PERIOD_IN_MS);
+  rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
 
   rtcos_run();
 }
@@ -129,6 +131,13 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
+  else if(u32EventFlags & EVENT_COMMON)
+  {
+    Serial.println("Task one received boadcasted event: EVENT_COMMON");
+    /* Return the events that have NOT been handled */
+    u32RetVal = u32EventFlags & ~EVENT_COMMON;
+  }
+  
   return u32RetVal;
 }
 
@@ -162,6 +171,12 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
     rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, FALSE);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
+  }
+  else if(u32EventFlags & EVENT_COMMON)
+  {
+    Serial.println("Task two received boadcasted event: EVENT_COMMON");
+    /* Return the events that have NOT been handled */
+    u32RetVal = u32EventFlags & ~EVENT_COMMON;
   }
   if(u08MsgCount)
   {

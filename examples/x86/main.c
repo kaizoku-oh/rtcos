@@ -3,7 +3,7 @@
  *
  * @file    : main.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.1
+ * @version : 1.2.2
  * @date    : April 2021
  * @brief   : Linux example program
  * 
@@ -24,29 +24,32 @@
 #define TASK_ID_PRIORITY_TWO                     (_u08)1
 #define EVENT_PING                               (_u32)1
 #define EVENT_PONG                               (_u32)2
+#define EVENT_COMMON                             (_u32)3
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Private function prototypes                                                                   */
 /*-----------------------------------------------------------------------------------------------*/
 static void delay(_u32 u32Seconds);
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param);
+static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg);
+static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg);
 
 /** ***********************************************************************************************
   * @brief      Program entry point
   * @return     Return nothing
   ********************************************************************************************** */
-void main(void)
+int main(void)
 {
   rtcos_init();
 
-  rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (_u32)0);
-  rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (_u32)0);
+  rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (void *)"TaskOne");
+  rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (void *)"TaskTwo");
 
   rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, FALSE);
   rtcos_send_message(TASK_ID_PRIORITY_TWO, (void *)"Hello");
+  rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
 
   rtcos_run();
+  return 0;
 }
 
 
@@ -54,14 +57,15 @@ void main(void)
   * @brief      Task handler function
   * @param      u32EventFlags Bit feild event
   * @param      u08MsgCount number of messages belonging to this task
-  * @param      u32Param Task parameter
+  * @param      pvArg Task argument
   * @return     Return unhandled events
   ********************************************************************************************** */
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
+static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
 {
   _u32 u32RetVal;
 
   u32RetVal = 0;
+  printf("Task one argument is: %s\r\n", (_char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PING)
   {
@@ -78,25 +82,31 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Para
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
+  else if(u32EventFlags & EVENT_COMMON)
+  {
+    printf("Task one received boadcasted event: EVENT_COMMON\r\n");
+    /* Return the events that have NOT been handled */
+    u32RetVal = u32EventFlags & ~EVENT_COMMON;
+  }
   /* This delay is added only for testing purposes under x86 */
   delay(1000);
   return u32RetVal;
 }
 
-
 /** ***********************************************************************************************
   * @brief      Task handler function
   * @param      u32EventFlags Bit feild event
   * @param      u08MsgCount number of messages belonging to this task
-  * @param      u32Param Task parameter
+  * @param      pvArg Task argument
   * @return     Return unhandled events
   ********************************************************************************************** */
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Param)
+static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
 {
   _u32 u32RetVal;
   _char *pcMessage;
 
   u32RetVal = 0;
+  printf("Task two argument is: %s\r\n", (_char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PONG)
   {
@@ -112,6 +122,12 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, _u32 u32Para
     rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 0, FALSE);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
+  }
+  else if(u32EventFlags & EVENT_COMMON)
+  {
+    printf("Task two received boadcasted event: EVENT_COMMON\r\n");
+    /* Return the events that have NOT been handled */
+    u32RetVal = u32EventFlags & ~EVENT_COMMON;
   }
   if(u08MsgCount)
   {

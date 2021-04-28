@@ -35,7 +35,7 @@
 *.i*86
 *.x86_64
 *.hex
-examples/linux/app
+examples/x86/main
 
 # Debug files
 *.dSYM/
