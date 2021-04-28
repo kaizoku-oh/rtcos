@@ -26,7 +26,7 @@ Being hardware agnostic, RTCOS can work on any hardware platform that can provid
 
 - [x] Change the argument type passed to the task handler from _u32 to void *
 
-- [ ] Add broadcast event function
+- [x] Add broadcast event function
 
 - [ ] Add broadcast message function
 
