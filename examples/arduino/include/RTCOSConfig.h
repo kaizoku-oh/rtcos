@@ -3,7 +3,7 @@
  *
  * @file    : RTCOSConfig.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.2
+ * @version : 1.2.3
  * @date    : April 2021
  * @brief   : RTCOS user configuration example used to overrite os default configuration
  * 

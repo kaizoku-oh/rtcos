@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.2
+ * @version : 1.2.3
  * @date    : April 2021
  * @brief   : RTCOS header file
  * 
@@ -128,6 +128,7 @@ rtcos_status_t rtcos_broadcast_event(_u32, _u32, _bool);
 rtcos_status_t rtcos_clear_event(_u08, _u32);
 #ifdef RTCOS_ENABLE_MESSAGES
 rtcos_status_t rtcos_send_message(_u08, void *);
+rtcos_status_t rtcos_broadcast_message(void *);
 rtcos_status_t rtcos_get_message(void **);
 #endif /* RTCOS_ENABLE_MESSAGES */
 
