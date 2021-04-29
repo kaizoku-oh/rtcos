@@ -3,7 +3,7 @@
  *
  * @file    : main.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.2
+ * @version : 1.2.3
  * @date    : April 2021
  * @brief   : Linux example program
  * 
@@ -45,7 +45,7 @@ int main(void)
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (void *)"TaskTwo");
 
   rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, FALSE);
-  rtcos_send_message(TASK_ID_PRIORITY_TWO, (void *)"Hello");
+  rtcos_broadcast_message((void *)"Hello");
   rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
 
   rtcos_run();
@@ -63,6 +63,7 @@ int main(void)
 static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
 {
   _u32 u32RetVal;
+  _char *pcMessage;
 
   u32RetVal = 0;
   printf("Task one argument is: %s\r\n", (_char *)pvArg);
@@ -84,9 +85,16 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   }
   else if(u32EventFlags & EVENT_COMMON)
   {
-    printf("Task one received boadcasted event: EVENT_COMMON\r\n");
+    printf("Task one received a boadcasted event: EVENT_COMMON\r\n");
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_COMMON;
+  }
+  if(u08MsgCount)
+  {
+    if(RTCOS_ERR_NONE == rtcos_get_message((void **)&pcMessage))
+    {
+      printf("Task one received a boadcasted message: %s\r\n", pcMessage);
+    }
   }
   /* This delay is added only for testing purposes under x86 */
   delay(1000);
@@ -125,7 +133,7 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   }
   else if(u32EventFlags & EVENT_COMMON)
   {
-    printf("Task two received boadcasted event: EVENT_COMMON\r\n");
+    printf("Task two received a boadcasted event: EVENT_COMMON\r\n");
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_COMMON;
   }
@@ -133,7 +141,7 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   {
     if(RTCOS_ERR_NONE == rtcos_get_message((void **)&pcMessage))
     {
-      printf("Task two received a message: %s\r\n", pcMessage);
+      printf("Task two received a boadcasted message: %s\r\n", pcMessage);
     }
   }
   /* This delay is added only for testing purposes under x86 */

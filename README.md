@@ -28,13 +28,15 @@ Being hardware agnostic, RTCOS can work on any hardware platform that can provid
 
 - [x] Add broadcast event function
 
-- [ ] Add broadcast message function
+- [x] Add broadcast message function
 
 - [ ] Add more comments explaining code
 
 - [ ] Add wiki documentation
 
 - [ ] Add Arduino wrapper
+
+- [ ] Add unit tests
 
 ## Acknowledgments
 - This project is inspired from the work done by [Jon Norenberg](https://github.com/norenberg99) in [rtcOS](https://github.com/norenberg99/rtcOS) project.

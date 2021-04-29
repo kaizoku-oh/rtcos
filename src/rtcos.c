@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.2
+ * @version : 1.2.3
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -534,39 +534,70 @@ rtcos_status_t rtcos_register_idle_handler(pf_os_idle_handler_t pfIdleHandler)
 /** ***********************************************************************************************
   * @brief      Send a message to a task
   * @param      u08TaskID ID of the task which will receive the message
-  * @param      pMsg Pointer on the message to send
+  * @param      pvMsg Pointer on the message to send
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
-rtcos_status_t rtcos_send_message(_u08 u08TaskID, void *pMsg)
+rtcos_status_t rtcos_send_message(_u08 u08TaskID, void *pvMsg)
 {
   rtcos_status_t eRetVal;
 
-  if(u08TaskID < RTCOSi_stMain.u08TasksCount)
+  if(pvMsg)
   {
-    RTCOS_ENTER_CRITICAL_SECTION();
-    eRetVal = _rtcos_fifo_push(u08TaskID, pMsg);
-    RTCOS_EXIT_CRITICAL_SECTION();
+    if(u08TaskID < RTCOSi_stMain.u08TasksCount)
+    {
+      RTCOS_ENTER_CRITICAL_SECTION();
+      eRetVal = _rtcos_fifo_push(u08TaskID, pvMsg);
+      RTCOS_EXIT_CRITICAL_SECTION();
+    }
+    else
+    {
+      eRetVal = RTCOS_ERR_INVALID_TASK;
+    }
   }
   else
   {
-    eRetVal = RTCOS_ERR_INVALID_TASK;
+    eRetVal = RTCOS_ERR_ARG;
+  }
+  return eRetVal;
+}
+
+/** ***********************************************************************************************
+  * @brief      Send a message to all tasks
+  * @param      pvMsg Pointer on the message to send
+  * @return     Status as defined in ::rtcos_status_t
+  ********************************************************************************************** */
+rtcos_status_t rtcos_broadcast_message(void *pvMsg)
+{
+  _u08 u08Index;
+  rtcos_status_t eRetVal;
+
+  if(pvMsg)
+  {
+    for(u08Index = 0; u08Index < RTCOSi_stMain.u08TasksCount; ++u08Index)
+    {
+      eRetVal |= rtcos_send_message(u08Index, pvMsg);
+    }
+  }
+  else
+  {
+    eRetVal = RTCOS_ERR_ARG;
   }
   return eRetVal;
 }
 
 /** ***********************************************************************************************
   * @brief      Retrieve a message from inside a task handler
-  * @param      ppMsg Pointer on a pointer to retrieved message
+  * @param      ppvMsg Pointer on a pointer to retrieved message
   * @return     Status as defined in ::rtcos_status_t
   ********************************************************************************************** */
-rtcos_status_t rtcos_get_message(void **ppMsg)
+rtcos_status_t rtcos_get_message(void **ppvMsg)
 {
   rtcos_status_t eRetVal;
 
   if(RTCOSi_stMain.u08CurrentTaskID < RTCOSi_stMain.u08TasksCount)
   {
     RTCOS_ENTER_CRITICAL_SECTION();
-    eRetVal = _rtcos_fifo_pop(RTCOSi_stMain.u08CurrentTaskID, ppMsg);
+    eRetVal = _rtcos_fifo_pop(RTCOSi_stMain.u08CurrentTaskID, ppvMsg);
     RTCOS_EXIT_CRITICAL_SECTION();
   }
   else
