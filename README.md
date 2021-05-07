@@ -30,6 +30,8 @@ Being hardware agnostic, RTCOS can work on any hardware platform that can provid
 
 - [x] Add broadcast message function
 
+- [x] Add STM32 example
+
 - [ ] Add more comments explaining code
 
 - [ ] Add wiki documentation
