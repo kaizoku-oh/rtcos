@@ -3,9 +3,9 @@
  *
  * @file    : main.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.3
+ * @version : 1.3.0
  * @date    : April 2021
- * @brief   : Linux example program
+ * @brief   : x86 example program
  * 
  **************************************************************************************************
  */
@@ -51,7 +51,6 @@ int main(void)
   rtcos_run();
   return 0;
 }
-
 
 /** ***********************************************************************************************
   * @brief      Task handler function
