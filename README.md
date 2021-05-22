@@ -1,7 +1,6 @@
-# RTCOS (Run To Completion Operating System)
-
 <p align="center">
   <img src="https://github.com/kaizoku-oh/rtcos/blob/main/docs/image/logo.png">
+  <h1 align="center">RTCOS (Run To Completion Operating System)</h1>
 </p>
 
 <!-- ![RTCOS logo](https://github.com/kaizoku-oh/rtcos/blob/main/docs/image/logo.png) -->
