@@ -459,7 +459,7 @@ void rtcos_init(void)
     RTCOSi_stMain.tstFutureEvents[u08Index].u32ReloadDelay = 0;
   }
 #ifdef RTCOS_ENABLE_TIMERS
-  for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
+  for(u08Index = 0; u08Index < RTCOS_MAX_TIMERS_COUNT; ++u08Index)
   {
     RTCOSi_stMain.tstTimers[u08Index].u32StartTickCount = 0;
     RTCOSi_stMain.tstTimers[u08Index].u32TickDelay = 0;
