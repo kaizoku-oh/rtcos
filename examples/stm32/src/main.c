@@ -153,6 +153,7 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   ********************************************************************************************** */
 static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
 {
+  _u32 u32RetVal;
   _char *pcMessage;
 
   u32RetVal = 0;

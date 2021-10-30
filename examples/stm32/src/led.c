@@ -3,7 +3,6 @@
  *
  * @file    : led.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.3.0
  * @brief   : STM32 bluepill LED BSP source file
  * 
  **************************************************************************************************

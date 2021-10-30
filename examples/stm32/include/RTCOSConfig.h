@@ -18,6 +18,7 @@
 #include "stm32f1xx_hal.h"
 
 /*-----------------------------------------------------------------------------------------------*/
+#define RTCOS_ENABLE_MESSAGES
 #define RTCOS_ENABLE_TIMERS
 
 #define RTCOS_MAX_TASKS_COUNT                    2

@@ -3,7 +3,6 @@
  *
  * @file    : main.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.3.0
  * @date    : April 2021
  * @brief   : x86 example program
  * 
