@@ -29,25 +29,25 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
 
-    # Build the firmware
+    # Build the arduino example firmware
     - name: Build Firmware
       run: |
         cd examples/arduino
         pio run
 
-    # Check the firmware
+    # Check the arduino example code
     - name: Check Firmware
       run: |
         cd examples/arduino
         pio check
 
-    # Build the firmware
+    # Build the stm32 example firmware
     - name: Build Firmware
       run: |
         cd examples/stm32
         pio run
 
-    # Check the firmware
+    # Check the stm32 example code
     - name: Check Firmware
       run: |
         cd examples/stm32
