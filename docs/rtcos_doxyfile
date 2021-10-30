@@ -891,7 +891,13 @@ RECURSIVE              = YES
 EXCLUDE                = examples/arduino/include/RTCOSConfig.h \
                          examples/arduino/src/main.cpp          \
                          examples/stm32/include/RTCOSConfig.h   \
+                         examples/stm32/include/button.h        \
+                         examples/stm32/include/led.h           \
+                         examples/stm32/include/printf.h        \
                          examples/stm32/src/main.c              \
+                         examples/stm32/src/button.c            \
+                         examples/stm32/src/led.c               \
+                         examples/stm32/src/printf.c            \
                          examples/x86/RTCOSConfig.h             \
                          examples/x86/main.c
 
