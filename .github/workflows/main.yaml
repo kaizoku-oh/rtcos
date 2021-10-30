@@ -35,23 +35,11 @@ jobs:
         cd examples/arduino
         pio run
 
-    # Check the arduino example code
-    - name: Check Firmware
-      run: |
-        cd examples/arduino
-        pio check
-
     # Build the stm32 example firmware
     - name: Build Firmware
       run: |
         cd examples/stm32
         pio run
-
-    # Check the stm32 example code
-    - name: Check Firmware
-      run: |
-        cd examples/stm32
-        pio check
 
     # Generate doxygen documentation
     - name: Generate documentation
