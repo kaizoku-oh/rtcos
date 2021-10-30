@@ -1,37 +1,32 @@
 /* 
  **************************************************************************************************
  *
- * @file    : RTCOSConfig.h
+ * @file    : button.h
  * @author  : Bayrem GHARSELLAOUI
  * @date    : October 2021
- * @brief   : RTCOS user configuration example used to overrite os default configuration
+ * @brief   : STM32 bluepill button BSP header file
  * 
  **************************************************************************************************
  */
 
-#ifndef RTCOS_CONFIG_H
-#define RTCOS_CONFIG_H
+#ifndef __BUTTON_H__
+#define __BUTTON_H__
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Includes                                                                                      */
 /*-----------------------------------------------------------------------------------------------*/
-#include "stm32f1xx_hal.h"
+#include <stdbool.h>
 
 /*-----------------------------------------------------------------------------------------------*/
-/* Defines                                                                                       */
+/* Types                                                                                         */
 /*-----------------------------------------------------------------------------------------------*/
-#define RTCOS_ENABLE_MESSAGES
-#define RTCOS_ENABLE_TIMERS
-
-#define RTCOS_MAX_TASKS_COUNT                    2
-#define RTCOS_MAX_FUTURE_EVENTS_COUNT            2
-#define RTCOS_MAX_MESSAGES_COUNT                 2
-#define RTCOS_MAX_TIMERS_COUNT                   2
+typedef void (*button_callback_t)(void);
 
 /*-----------------------------------------------------------------------------------------------*/
-/* Macros                                                                                        */
+/* Functions                                                                                     */
 /*-----------------------------------------------------------------------------------------------*/
-#define RTCOS_ENTER_CRITICAL_SECTION()           __disable_irq();
-#define RTCOS_EXIT_CRITICAL_SECTION()            __enable_irq();
+void button_init(void);
+void button_register_callback(button_callback_t);
+bool button_is_pressed(void);
 
-#endif /* RTCOS_CONFIG_H */
+#endif /* __BUTTON_H__ */

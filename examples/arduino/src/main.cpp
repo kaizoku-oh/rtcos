@@ -137,7 +137,7 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   }
   else if(u32EventFlags & EVENT_COMMON)
   {
-    Serial.println("Task one received a boadcasted event: EVENT_COMMON");
+    Serial.println("Task one received a broadcasted event: EVENT_COMMON");
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_COMMON;
   }
@@ -145,7 +145,7 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   {
     if(RTCOS_ERR_NONE == rtcos_get_message((void **)&pcMessage))
     {
-      Serial.print("Task one received a boadcasted message: ");
+      Serial.print("Task one received a broadcasted message: ");
       Serial.println(pcMessage);
     }
   }
@@ -185,7 +185,7 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   }
   else if(u32EventFlags & EVENT_COMMON)
   {
-    Serial.println("Task two received a boadcasted event: EVENT_COMMON");
+    Serial.println("Task two received a broadcasted event: EVENT_COMMON");
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_COMMON;
   }
@@ -193,7 +193,7 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   {
     if(RTCOS_ERR_NONE == rtcos_get_message((void **)&pcMessage))
     {
-      Serial.print("Task two received a boadcasted message: ");
+      Serial.print("Task two received a broadcasted message: ");
       Serial.println(pcMessage);
     }
   }
