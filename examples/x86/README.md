@@ -6,7 +6,7 @@ $ examples/x86/main
 Task one argument is: TaskOne
 Task one received PING event!
 Task one argument is: TaskOne
-Task one received boadcasted event: EVENT_COMMON
+Task one received broadcasted event: EVENT_COMMON
 Task two argument is: TaskTwo
 Task two received PONG event!
 Task two received a message: Hello

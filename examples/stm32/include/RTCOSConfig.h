@@ -3,8 +3,7 @@
  *
  * @file    : RTCOSConfig.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.3.0
- * @date    : April 2021
+ * @date    : October 2021
  * @brief   : RTCOS user configuration example used to overrite os default configuration
  * 
  **************************************************************************************************
@@ -16,12 +15,9 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Includes                                                                                      */
 /*-----------------------------------------------------------------------------------------------*/
-#include <Arduino.h>
+#include "stm32f1xx_hal.h"
 
 /*-----------------------------------------------------------------------------------------------*/
-/* Defines                                                                                       */
-/*-----------------------------------------------------------------------------------------------*/
-#define RTCOS_ENABLE_MESSAGES
 #define RTCOS_ENABLE_TIMERS
 
 #define RTCOS_MAX_TASKS_COUNT                    2
@@ -32,7 +28,7 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Macros                                                                                        */
 /*-----------------------------------------------------------------------------------------------*/
-#define RTCOS_ENTER_CRITICAL_SECTION()           noInterrupts();
-#define RTCOS_EXIT_CRITICAL_SECTION()            interrupts();
+#define RTCOS_ENTER_CRITICAL_SECTION()           __disable_irq();
+#define RTCOS_EXIT_CRITICAL_SECTION()            __enable_irq();
 
 #endif /* RTCOS_CONFIG_H */

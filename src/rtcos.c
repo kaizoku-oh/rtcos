@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.3
+ * @version : 1.3.0
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -571,6 +571,7 @@ rtcos_status_t rtcos_broadcast_message(void *pvMsg)
   _u08 u08Index;
   rtcos_status_t eRetVal;
 
+  eRetVal = RTCOS_ERR_NONE;
   if(pvMsg)
   {
     for(u08Index = 0; u08Index < RTCOSi_stMain.u08TasksCount; ++u08Index)
