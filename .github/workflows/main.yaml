@@ -29,17 +29,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install platformio
 
-    # Build the firmware
+    # Build the arduino example firmware
     - name: Build Firmware
       run: |
         cd examples/arduino
         pio run
 
-    # Check the firmware
-    - name: Check Firmware
+    # Build the stm32 example firmware
+    - name: Build Firmware
       run: |
-        cd examples/arduino
-        pio check
+        cd examples/stm32
+        pio run
 
     # Generate doxygen documentation
     - name: Generate documentation

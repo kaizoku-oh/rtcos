@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.h
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.3
+ * @version : 1.3.0
  * @date    : April 2021
  * @brief   : RTCOS header file
  * 
@@ -44,7 +44,7 @@
 /** @defgroup rtcos_exported_defines Exported defines
   * @{
   */
-#define NIL                                      0x00000000uL
+#define NIL                                      (void *)0x00000000uL
 #define TRUE                                     (_bool)(1 == 1)
 #define FALSE                                    (_bool)(0 == 1)
 /**

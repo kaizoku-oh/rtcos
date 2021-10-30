@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.2.3
+ * @version : 1.3.0
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
@@ -459,7 +459,7 @@ void rtcos_init(void)
     RTCOSi_stMain.tstFutureEvents[u08Index].u32ReloadDelay = 0;
   }
 #ifdef RTCOS_ENABLE_TIMERS
-  for(u08Index = 0; u08Index < RTCOS_MAX_TASKS_COUNT; ++u08Index)
+  for(u08Index = 0; u08Index < RTCOS_MAX_TIMERS_COUNT; ++u08Index)
   {
     RTCOSi_stMain.tstTimers[u08Index].u32StartTickCount = 0;
     RTCOSi_stMain.tstTimers[u08Index].u32TickDelay = 0;
@@ -571,6 +571,7 @@ rtcos_status_t rtcos_broadcast_message(void *pvMsg)
   _u08 u08Index;
   rtcos_status_t eRetVal;
 
+  eRetVal = RTCOS_ERR_NONE;
   if(pvMsg)
   {
     for(u08Index = 0; u08Index < RTCOSi_stMain.u08TasksCount; ++u08Index)
