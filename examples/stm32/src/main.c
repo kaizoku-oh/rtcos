@@ -92,7 +92,7 @@ int main(void)
   ********************************************************************************************** */
 static void _on_os_timer_expired(void const *pvArg)
 {
-  if(0 == strcmp("blink", (_char *)pvArg))
+  if(0 == strcmp("blink", (char *)pvArg))
   {
     led_toggle();
   }
@@ -105,13 +105,13 @@ static void _on_os_timer_expired(void const *pvArg)
   * @param      pvArg Task argument
   * @return     Unhandled events
   ********************************************************************************************** */
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
-  printf("Task one argument is: %s\r\n", (_char *)pvArg);
+  printf("Task one argument is: %s\r\n", (char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PING)
   {
@@ -151,13 +151,13 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   * @param      pvArg Task argument
   * @return     Unhandled events
   ********************************************************************************************** */
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
-  printf("Task two argument is: %s\r\n", (_char *)pvArg);
+  printf("Task two argument is: %s\r\n", (char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PONG)
   {

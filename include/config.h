@@ -5,7 +5,7 @@
  * @author  : Bayrem GHARSELLAOUI
  * @version : 1.3.1
  * @date    : April 2021
- * @brief   : RTCOS default configuration file
+ * @brief   : RTCOS default configuration file (can be used as a template for RTCOSConfig.h)
  * 
  **************************************************************************************************
  */

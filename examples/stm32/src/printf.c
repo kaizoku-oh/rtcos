@@ -97,11 +97,11 @@ int _write(int s32Fd, char *pcString, int s32Length)
   if((STDOUT_FILENO == s32Fd) || (STDERR_FILENO == s32Fd))
   {
     s32RetVal = (HAL_OK == HAL_UART_Transmit(&stUsartHandle,
-                                          (uint8_t *)pcString,
-                                          (s32Length * sizeof(uint8_t)),
-                                          HAL_MAX_DELAY))
-             ?(s32Length * sizeof(uint8_t))
-             :-1;
+                                             (uint8_t *)pcString,
+                                             (s32Length * sizeof(uint8_t)),
+                                             HAL_MAX_DELAY))
+                ?(s32Length * sizeof(uint8_t))
+                :-1;
   }
   else
   {

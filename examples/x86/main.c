@@ -19,18 +19,18 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
-#define TASK_ID_PRIORITY_ONE                     (_u08)0
-#define TASK_ID_PRIORITY_TWO                     (_u08)1
-#define EVENT_PING                               (_u32)1
-#define EVENT_PONG                               (_u32)2
-#define EVENT_COMMON                             (_u32)3
+#define TASK_ID_PRIORITY_ONE                     (uint8_t)0
+#define TASK_ID_PRIORITY_TWO                     (uint8_t)1
+#define EVENT_PING                               (uint32_t)1
+#define EVENT_PONG                               (uint32_t)2
+#define EVENT_COMMON                             (uint32_t)3
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Private function prototypes                                                                   */
 /*-----------------------------------------------------------------------------------------------*/
-static void delay(_u32 u32Seconds);
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg);
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg);
+static void delay(uint32_t u32Seconds);
+static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg);
+static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg);
 
 /** ***********************************************************************************************
   * @brief      Program entry point
@@ -43,7 +43,7 @@ int main(void)
   rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (void *)"TaskOne");
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (void *)"TaskTwo");
 
-  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, FALSE);
+  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (uint32_t)0, FALSE);
   rtcos_broadcast_message((void *)"Hello");
   rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
 
@@ -58,13 +58,13 @@ int main(void)
   * @param      pvArg Task argument
   * @return     Return unhandled events
   ********************************************************************************************** */
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
-  printf("Task one argument is: %s\r\n", (_char *)pvArg);
+  printf("Task one argument is: %s\r\n", (char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PING)
   {
@@ -106,13 +106,13 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   * @param      pvArg Task argument
   * @return     Return unhandled events
   ********************************************************************************************** */
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
-  printf("Task two argument is: %s\r\n", (_char *)pvArg);
+  printf("Task two argument is: %s\r\n", (char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PONG)
   {
@@ -152,9 +152,9 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   * @param      u32Seconds Number of seconds to wait
   * @return     Return unhandled events
   ********************************************************************************************** */
-static void delay(_u32 u32Seconds)
+static void delay(uint32_t u32Seconds)
 {
-  _u32 u32MilliSeconds;
+  uint32_t u32MilliSeconds;
   clock_t s32StartTime;
   
   u32MilliSeconds = 1000 * u32Seconds;
