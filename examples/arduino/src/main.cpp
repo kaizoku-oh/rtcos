@@ -64,10 +64,10 @@ void setup()
   rtcos_init();
   rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (void *)"TaskOne");
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (void *)"TaskTwo");
-  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (uint32_t)0, FALSE);
+  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (uint32_t)0, false);
   u08OsTimerID = rtcos_create_timer(RTCOS_TIMER_PERIODIC, _on_os_timer_expired, (void *)"blink");
   rtcos_start_timer(u08OsTimerID, SOFTWARE_TIMER_PERIOD_IN_MS);
-  rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
+  rtcos_broadcast_event(EVENT_COMMON, 0, false);
   rtcos_broadcast_message((void *)"Hello");
 
   rtcos_run();
@@ -130,7 +130,7 @@ static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, v
      */
     Serial.println("Task one received PING event!");
     /* Send a future pong event to task two */
-    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, false);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
@@ -178,7 +178,7 @@ static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, v
      */
     Serial.println("Task two received PONG event!");
     /* Send a future ping event to task one */
-    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, false);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
   }
