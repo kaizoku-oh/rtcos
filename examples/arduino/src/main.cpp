@@ -20,11 +20,11 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Defines                                                                                       */
 /*-----------------------------------------------------------------------------------------------*/
-#define TASK_ID_PRIORITY_ONE                     (_u08)0
-#define TASK_ID_PRIORITY_TWO                     (_u08)1
-#define EVENT_PING                               (_u32)1
-#define EVENT_PONG                               (_u32)2
-#define EVENT_COMMON                             (_u32)3
+#define TASK_ID_PRIORITY_ONE                     (uint8_t)0
+#define TASK_ID_PRIORITY_TWO                     (uint8_t)1
+#define EVENT_PING                               (uint32_t)1
+#define EVENT_PONG                               (uint32_t)2
+#define EVENT_COMMON                             (uint32_t)3
 #define SERIAL_BAUDRATE                          9600
 #define HARDWARE_TIMER_PERIOD_IN_US              1000
 #define SOFTWARE_TIMER_PERIOD_IN_MS              100
@@ -33,14 +33,14 @@
 /* Private function prototypes                                                                   */
 /*-----------------------------------------------------------------------------------------------*/
 static void _timer_isr(void);
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg);
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg);
+static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg);
+static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg);
 static void _on_os_timer_expired(void const *);
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Private variables                                                                             */
 /*-----------------------------------------------------------------------------------------------*/
-static _u08 u08LedState;
+static uint8_t u08LedState;
 
 /*-----------------------------------------------------------------------------------------------*/
 /* Exported functions                                                                            */
@@ -51,7 +51,7 @@ static _u08 u08LedState;
   ********************************************************************************************** */
 void setup()
 {
-  _u08 u08OsTimerID;
+  uint8_t u08OsTimerID;
 
   u08LedState = LOW;
   pinMode(LED_BUILTIN, OUTPUT);
@@ -64,10 +64,10 @@ void setup()
   rtcos_init();
   rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (void *)"TaskOne");
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (void *)"TaskTwo");
-  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (_u32)0, FALSE);
+  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (uint32_t)0, false);
   u08OsTimerID = rtcos_create_timer(RTCOS_TIMER_PERIODIC, _on_os_timer_expired, (void *)"blink");
   rtcos_start_timer(u08OsTimerID, SOFTWARE_TIMER_PERIOD_IN_MS);
-  rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
+  rtcos_broadcast_event(EVENT_COMMON, 0, false);
   rtcos_broadcast_message((void *)"Hello");
 
   rtcos_run();
@@ -96,7 +96,7 @@ static void _timer_isr(void)
   ********************************************************************************************** */
 static void _on_os_timer_expired(void const *pvArg)
 {
-  if(0 == strcmp("blink", (_char *)pvArg))
+  if(0 == strcmp("blink", (char *)pvArg))
   {
     u08LedState = !u08LedState;
     digitalWrite(LED_BUILTIN, u08LedState);
@@ -110,14 +110,14 @@ static void _on_os_timer_expired(void const *pvArg)
   * @param      pvArg Task argument
   * @return     Return unhandled events
   ********************************************************************************************** */
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
   Serial.print("Task one argument is: ");
-  Serial.println((_char *)pvArg);
+  Serial.println((char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PING)
   {
@@ -130,7 +130,7 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
      */
     Serial.println("Task one received PING event!");
     /* Send a future pong event to task two */
-    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, false);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
@@ -158,14 +158,14 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   * @param      pvArg Task argument
   * @return     Return unhandled events
   ********************************************************************************************** */
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
   Serial.print("Task two argument is: ");
-  Serial.println((_char *)pvArg);
+  Serial.println((char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PONG)
   {
@@ -178,7 +178,7 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
      */
     Serial.println("Task two received PONG event!");
     /* Send a future ping event to task one */
-    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, false);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
   }

@@ -23,8 +23,8 @@
 /*-----------------------------------------------------------------------------------------------*/
 /* Private function prototypes                                                                   */
 /*-----------------------------------------------------------------------------------------------*/
-static void system_clock_config(void);
-static void on_button_pressed(void);
+static void _system_clock_config(void);
+static void _on_button_pressed(void);
 static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg);
 static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg);
 static void _on_os_timer_expired(void const *pvArg);
@@ -44,8 +44,8 @@ static void _on_os_timer_expired(void const *pvArg);
 /*-----------------------------------------------------------------------------------------------*/
 /* Private variables                                                                             */
 /*-----------------------------------------------------------------------------------------------*/
-static uint32_t ledToggleIndex;
-static uint32_t buttonPressIndex;
+static uint32_t u32LedToggleCount;
+static uint32_t u32ButtonPressCount;
 static uint8_t u08OsTimerID;
 
 /*-----------------------------------------------------------------------------------------------*/
@@ -58,23 +58,23 @@ static uint8_t u08OsTimerID;
 int main(void)
 {
   HAL_Init();
-  system_clock_config();
+  _system_clock_config();
 
   led_init();
   printf_init();
   button_init();
-  button_register_callback(on_button_pressed);
-  ledToggleIndex = 0;
-  buttonPressIndex = 0;
+  button_register_callback(_on_button_pressed);
+  u32LedToggleCount = 0;
+  u32ButtonPressCount = 0;
   
   rtcos_init();
   rtcos_register_task_handler(_task_one_handler, TASK_ID_PRIORITY_ONE, (void *)"TaskOne");
   rtcos_register_task_handler(_task_two_handler, TASK_ID_PRIORITY_TWO, (void *)"TaskTwo");
 
-  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (uint32_t)0, FALSE);
+  rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, (uint32_t)0, false);
   u08OsTimerID = rtcos_create_timer(RTCOS_TIMER_PERIODIC, _on_os_timer_expired, (void *)"blink");
   rtcos_start_timer(u08OsTimerID, SOFTWARE_TIMER_PERIOD_IN_MS);
-  rtcos_broadcast_event(EVENT_COMMON, 0, FALSE);
+  rtcos_broadcast_event(EVENT_COMMON, 0, false);
   rtcos_broadcast_message((void *)"Hello");
   rtcos_run();
   while(1)
@@ -92,7 +92,7 @@ int main(void)
   ********************************************************************************************** */
 static void _on_os_timer_expired(void const *pvArg)
 {
-  if(0 == strcmp("blink", (_char *)pvArg))
+  if(0 == strcmp("blink", (char *)pvArg))
   {
     led_toggle();
   }
@@ -105,13 +105,13 @@ static void _on_os_timer_expired(void const *pvArg)
   * @param      pvArg Task argument
   * @return     Unhandled events
   ********************************************************************************************** */
-static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_one_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
-  printf("Task one argument is: %s\r\n", (_char *)pvArg);
+  printf("Task one argument is: %s\r\n", (char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PING)
   {
@@ -124,7 +124,7 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
      */
     printf("Task one received PING event!\r\n");
     /* Send a future pong event to task two */
-    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_TWO, EVENT_PONG, 1000, false);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PING;
   }
@@ -151,13 +151,13 @@ static _u32 _task_one_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   * @param      pvArg Task argument
   * @return     Unhandled events
   ********************************************************************************************** */
-static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *pvArg)
+static uint32_t _task_two_handler(uint32_t u32EventFlags, uint8_t u08MsgCount, void const *pvArg)
 {
-  _u32 u32RetVal;
-  _char *pcMessage;
+  uint32_t u32RetVal;
+  char *pcMessage;
 
   u32RetVal = 0;
-  printf("Task two argument is: %s\r\n", (_char *)pvArg);
+  printf("Task two argument is: %s\r\n", (char *)pvArg);
   /* To allow executing higher priority tasks we just handle one event then return */
   if(u32EventFlags & EVENT_PONG)
   {
@@ -170,7 +170,7 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
      */
     printf("Task one received PONG event!\r\n");
     /* Send a future ping event to task one */
-    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, FALSE);
+    rtcos_send_event(TASK_ID_PRIORITY_ONE, EVENT_PING, 1000, false);
     /* Return the events that have NOT been handled */
     u32RetVal = u32EventFlags & ~EVENT_PONG;
   }
@@ -194,41 +194,41 @@ static _u32 _task_two_handler(_u32 u32EventFlags, _u08 u08MsgCount, void const *
   * @brief      Configure system clock at 216 MHz
   * @return     Nothing
   ********************************************************************************************** */
-static void on_button_pressed(void)
+static void _on_button_pressed(void)
 {
-  printf("Button is pressed (%lu)\r\n", buttonPressIndex++);
+  printf("Button is pressed (%lu)\r\n", u32ButtonPressCount++);
 }
 
 /** ***********************************************************************************************
   * @brief      Configure system clock at 72 MHz
   * @return     Nothing
   ********************************************************************************************** */
-static void system_clock_config(void)
+static void _system_clock_config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_OscInitTypeDef stRccOscInit = {0};
+  RCC_ClkInitTypeDef stRccClkInit = {0};
 
   /* Initializes the RCC Oscillators according to the specified parameters
    * in the RCC_OscInitTypeDef structure.
    */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
-  HAL_RCC_OscConfig(&RCC_OscInitStruct);
+  stRccOscInit.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  stRccOscInit.HSEState = RCC_HSE_ON;
+  stRccOscInit.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  stRccOscInit.HSIState = RCC_HSI_ON;
+  stRccOscInit.PLL.PLLState = RCC_PLL_ON;
+  stRccOscInit.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  stRccOscInit.PLL.PLLMUL = RCC_PLL_MUL9;
+  HAL_RCC_OscConfig(&stRccOscInit);
   /** Initializes the CPU, AHB and APB buses clocks */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK   | \
-                                RCC_CLOCKTYPE_SYSCLK | \
-                                RCC_CLOCKTYPE_PCLK1  | \
-                                RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
+  stRccClkInit.ClockType = RCC_CLOCKTYPE_HCLK   | \
+                           RCC_CLOCKTYPE_SYSCLK | \
+                           RCC_CLOCKTYPE_PCLK1  | \
+                           RCC_CLOCKTYPE_PCLK2;
+  stRccClkInit.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  stRccClkInit.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  stRccClkInit.APB1CLKDivider = RCC_HCLK_DIV2;
+  stRccClkInit.APB2CLKDivider = RCC_HCLK_DIV1;
+  HAL_RCC_ClockConfig(&stRccClkInit, FLASH_LATENCY_2);
 }
 
 /** ***********************************************************************************************
@@ -245,7 +245,7 @@ void SysTick_Handler(void)
 }
 
 /** ***********************************************************************************************
-  * @brief      System hardfault interrupt handler
+  * @brief      System HardFault interrupt handler
   * @return     Nothing
   ********************************************************************************************** */
 void HardFault_Handler(void)

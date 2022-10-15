@@ -40,10 +40,3 @@ jobs:
       run: |
         cd examples/stm32
         pio run
-
-    # Generate doxygen documentation
-    - name: Generate documentation
-      uses: mattnotmitt/doxygen-action@v1
-      with:
-          working-directory: '.'
-          doxyfile-path: 'docs/rtcos_doxyfile'

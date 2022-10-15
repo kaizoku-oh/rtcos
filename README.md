@@ -7,7 +7,6 @@
 <!-- ![](https://github.com/<OWNER>/<REPOSITORY>/workflows/<WORKFLOW_NAME>/badge.svg) -->
 [![GitHub Build workflow status](https://github.com/kaizoku-oh/rtcos/workflows/Build/badge.svg)](https://github.com/kaizoku-oh/rtcos/actions/workflows/main.yaml)
 [![GitHub release](https://img.shields.io/github/v/release/kaizoku-oh/rtcos)](https://github.com/kaizoku-oh/rtcos/releases)
-![dependencies Status](https://status.david-dm.org/gh/dwyl/esta.svg)
 [![GitHub issues](https://img.shields.io/github/issues/kaizoku-oh/rtcos)](https://github.com/kaizoku-oh/rtcos/issues)
 ![GitHub top language](https://img.shields.io/github/languages/top/kaizoku-oh/rtcos)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/kaizoku-oh/rtcos/blob/main/LICENSE)
@@ -15,23 +14,11 @@
 
 is an event-driven RTC (Run To Completion) scheduler dedicated to ultra constrained IoT devices.
 
-RTCOS is written in pure C and doesn't need any thirdparty library or dependency to work.
+RTCOS is written in pure C and doesn't depend on any thirdparty library to work.
 
 Being hardware agnostic, RTCOS can work on any hardware platform that can provide a hardware timer tick and optionally an interface to enter and exit critical section.
 
 ## TODO ✅
-
-- [x] Add timer callback void * argument
-
-- [x] Change the argument type passed to the task handler from _u32 to void *
-
-- [x] Add broadcast event function
-
-- [x] Add broadcast message function
-
-- [x] Add STM32 example
-
-- [ ] Add more comments explaining code
 
 - [ ] Add wiki documentation
 
