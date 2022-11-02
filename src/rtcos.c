@@ -3,7 +3,7 @@
  *
  * @file    : rtcos.c
  * @author  : Bayrem GHARSELLAOUI
- * @version : 1.3.3
+ * @version : 1.3.4
  * @date    : April 2021
  * @brief   : RTCOS source file
  * 
